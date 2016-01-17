@@ -4,6 +4,10 @@
 
 **Manual**: [Español] (http://dumpzilla.org/Manual_dumpzilla_es.txt "Manual en español de dumpzilla") / [English] (http://dumpzilla.org/Manual_dumpzilla_en.txt "Dumpzilla english Manual")
 
+**SO**: Unix / Win
+
+**Screenshots**: [Dummpzilla] (http://dumpzilla.org/Screenshots/screenshots.html "dumpzilla screenshots")
+
 Dumpzilla application is developed in Python 3.x and has as purpose extract all forensic interesting information of Firefox, Iceweasel and Seamonkey browsers to be analyzed. Due to its Python 3.x developement, might not work properly in old Python versions, mainly with certain characters. Works under Unix and Windows 32/64 bits systems. Works in command line interface, so information dumps could be redirected by pipes with tools such as grep, awk, cut, sed... Dumpzilla allows to visualize following sections, search customization and extract certain content.
 
  - Cookies + DOM Storage (HTML 5).
