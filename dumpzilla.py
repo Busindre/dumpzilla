@@ -9,6 +9,9 @@ from datetime import datetime
 from subprocess import call
 from collections import OrderedDict
 
+
+import argparse
+
 # Magic Module: https://github.com/ahupp/python-magic
 
 ########################################### GLOBAL VARIABLES ##################################################
@@ -145,7 +148,14 @@ watch_text = 1
 message_list = [] 
 
 watchsecond = 4 # --Watch option: Seconds update. (NO Windows)
-python3_path = "" # Python 3.x path (NO Windows). Example: /usr/bin/python3.2
+python_def = '/usr/bin/python3.4'
+
+python3_path = input('Python 3 path (Press Enter for default - /usr/bin/python3.4): ').strip() # Python 3.x path (NO Windows). Example: /usr/bin/python3.4
+
+if python3_path == '':
+    python3_path = python_def
+    
+
 
 if sys.platform.startswith('win') == False:
    libnss = CDLL("libnss3.so")
@@ -1846,371 +1856,451 @@ Profile:
 ### MAIN                                                                                                      #
 ##                                                                                                            #
 ###############################################################################################################
+if path.isfile(python3_path) == False: 
+    save_message("ERROR","Python path '" + python3_path + "' is not a valid file path.")
 
 if len(sys.argv) == 1:
       save_message("ERROR","Missing parameters...")
       show_help()
 else:
-   dir = sys.argv[1]
-   if path.isdir(dir) == True and len(sys.argv) == 2:
-      
-      save_message("ERROR","Missing parameters...")
-      show_help()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filename')
 
-   elif path.isdir(dir) == True and len(sys.argv) > 2:
-      
-      dir = path.abspath(dir)
+    
       
       ###############
-      ### ARGUMENTS      
-      ###############     
-      for arg in sys.argv:
-         # Checking parameter
-         if arg.startswith("-") == True and count > 1:
-            if arg not in parameters:  
-               save_message("ERROR", str(arg)+" : Invalid argument!")
-               show_help() 
-
-         if arg.startswith("-"):    # and not arg == "--Export":
-            arg_count = arg_count+1
-
-         if arg == "--RegExp":
-            is_regexp_ok = True
-         #...........................................
-         #... All parameter
-         #...........................................
-         if arg == "--All":
-            is_showall_ok = True
-         #...........................................
-         #... Summary parameter
-         #...........................................
-         if arg == "--Summary":
-            is_summary_ok = True
-         #...........................................
-         #... Cookie parameters
-         #...........................................
-         if arg == "--Cookies":
-            is_cookie_ok = True
-         elif arg == "-showdom" and is_cookie_ok == True:
-            is_dom_ok = True
-         elif arg == "-domain" and is_cookie_ok == True:
-            cookie_domain = get_param_argurment(arg,count+1)
-            cookie_filters.append(["string","baseDomain",cookie_domain])
-            domain_filters.append(["string","scope",cookie_domain])
-         elif arg == "-name" and is_cookie_ok == True:
-            cookie_name = get_param_argurment(arg,count+1)
-            cookie_filters.append(["string","name",cookie_name])
-         elif arg == "-hostcookie" and is_cookie_ok == True:
-            cookie_host = get_param_argurment(arg,count+1)
-            cookie_filters.append(["string","host",cookie_host])
-         elif arg == "-access" and is_cookie_ok == True:
-            cookie_access_date = validateDate(get_param_argurment(arg,count+1))
-            cookie_filters.append(["date","last",cookie_access_date]) 
-         elif arg == "-create" and is_cookie_ok == True:
-            cookie_create_date = validateDate(get_param_argurment(arg,count+1))
-            cookie_filters.append(["date","creat",cookie_create_date]) 
-         elif arg == "-secure" and is_cookie_ok == True:
-            cookie_secure = get_param_argurment(arg,count+1)
-            cookie_filters.append(["number","isSecure",cookie_secure]) 
-         elif arg == "-httponly" and is_cookie_ok == True:
-            cookie_httponly = get_param_argurment(arg,count+1)
-            cookie_filters.append(["number","isHttpOnly",cookie_httponly]) 
-         elif arg == "-last_range" and is_cookie_ok == True:
-            cookie_access_range1 = validateDate(get_param_argurment(arg,count+1))
-            cookie_access_range2 = validateDate(get_param_argurment(arg,count+2))
-            cookie_filters.append(["range","last",[cookie_access_range1,cookie_access_range2]]) 
-         elif arg == "-create_range" and is_cookie_ok == True:
-            cookie_create_range1 = validateDate(get_param_argurment(arg,count+1))
-            cookie_create_range2 = validateDate(get_param_argurment(arg,count+2))
-            cookie_filters.append(["range","creat",[cookie_create_range1,cookie_create_range2]]) 
-         #...........................................
-         #... Permissions parameters
-         #...........................................
-         elif arg == "--Permissions":
-            is_permissions_ok = True
-         elif arg == "-host" and is_permissions_ok == True:
-            permissions_host = get_param_argurment(arg,count+1)
-            permissions_filters.append(["string","host",permissions_host]) 
-         elif arg == "-type" and is_permissions_ok == True:
-            permissions_type = get_param_argurment(arg,count+1)
-            permissions_filters.append(["string","type",permissions_type]) 
-         elif arg == "-modif" and is_cookie_ok == True:
-            permissions_modif_date = validateDate(get_param_argurment(arg,count+1))
-            permissions_filters.append(["date","modif",permissions_modif_date]) 
-         elif arg == "-modif_range" and is_permissions_ok == True:
-            permissions_modif_range1 = validateDate(get_param_argurment(arg,count+1))
-            permissions_modif_range2 = validateDate(get_param_argurment(arg,count+2))
-            permissions_filters.append(["range","modif",[permissions_modif_range1,permissions_modif_range2]]) 
-         #...........................................
-         #... Permissions parameters
-         #...........................................
-         elif arg == "--Preferences":
-            is_preferences_ok = True
-         #...........................................
-         #... Addons parameters                                                                                                  
-         #...........................................
-         elif arg == "--Addons":
-            is_addon_ok = True
-         #...........................................
-         #... Downloads parameters                                                                                                 
-         #...........................................
-         elif arg == "--Downloads":
-            is_downloads_ok = True
-         elif arg == "-range" and is_downloads_ok == True:
-            downloads_range1 = validateDate(get_param_argurment(arg,count+1))
-            downloads_range2 = validateDate(get_param_argurment(arg,count+2))
-            downloads_filters.append(["range","start",[downloads_range1,downloads_range2]]) 
-            downloads_history_filters.append(["range","modified",[downloads_range1,downloads_range2]]) 
-         #...........................................
-         #... Forms parameters                                                                                                 
-         #...........................................
-         elif arg == "--Forms":
-            is_forms_ok = True
-         elif arg == "-value" and is_forms_ok == True:
-            forms_value = get_param_argurment(arg,count+1)
-            forms_filters.append(["string","value",forms_value])   
-         elif arg == "-forms_range" and is_forms_ok == True:
-            forms_range1 = validateDate(get_param_argurment(arg,count+1))
-            forms_range2 = validateDate(get_param_argurment(arg,count+2))
-            forms_filters.append(["range","last",[forms_range1,forms_range2]]) 
-         #...........................................
-         #... History parameters
-         #...........................................
-         elif arg == "--History":
-            is_history_ok = True
-         elif arg == "-url" and is_history_ok == True:
-            history_url =  get_param_argurment(arg,count+1)
-            history_filters.append(["string","url",history_url])
-         elif arg == "-frequency" and is_history_ok == True:
-            is_frequency_ok = True
-         elif arg == "-title" and is_history_ok == True:
-            history_title = get_param_argurment(arg,count+1)
-            history_filters.append(["string","title",history_title])
-         elif arg == "-date" and is_history_ok == True:
-            history_date = validateDate(get_param_argurment(arg,count+1))
-            history_filters.append(["date","last",history_date])
-         elif arg == "-history_range" and is_history_ok == True:
-            history_range1 = validateDate(get_param_argurment(arg,count+1))
-            history_range2 = validateDate(get_param_argurment(arg,count+2))
-            history_filters.append(["range","last",[history_range1,history_range2]])
-         #...........................................
-         #... Bookmarks parameters
-         #...........................................
-         elif arg == "--Bookmarks":
-            is_bookmarks_ok = True
-         elif arg == "-bookmarks_range" and is_bookmarks_ok == True:
-            bookmarks_range1 = validateDate(get_param_argurment(arg,count+1))
-            bookmarks_range2 = validateDate(get_param_argurment(arg,count+2))
-            bookmarks_filters.append(["range","last",[bookmarks_range1,bookmarks_range2]])
-         #...........................................
-         #... Passwords parameters
-         #...........................................
-         elif arg == "--Passwords":
-            is_passwords_ok = True
-         #...........................................
-         #... Cache parameters
-         #...........................................
-         elif arg == "--OfflineCache":
-            is_cacheoff_ok = True
-         elif arg == "-cache_range" and is_cacheoff_ok == True:
-            cacheoff_range1 = get_param_argurment(arg,count+1)
-            cacheoff_range2 = get_param_argurment(arg,count+2)
-            cacheoff_filters.append(["range","last",[cacheoff_range1,cacheoff_range2]])
-         elif arg == "-extract" and is_cacheoff_ok == True:
-            is_cacheoff_extract_ok = True
-            cacheoff_directory = get_param_argurment(arg,count+1)
-         #...........................................
-         #... Certoverride parameters
-         #...........................................
-         elif arg == "--Certoverride":
-            is_cert_ok = True
-         #...........................................
-         #... Thumbnails parameters
-         #...........................................
-         elif arg == "--Thumbnails":
-            is_thump_ok = True
-         elif arg == "-extract_thumb" and is_thump_ok == True:
-            thumb_directory = get_param_argurment(arg,count+1)
-         #...........................................
-         #... Session parameters
-         #...........................................
-         elif arg == "--Session":
-            is_session_ok = True
-         #...........................................
-         #... Session parameters          
-         #...........................................
-         elif arg == "--Session2":
-            is_session2_ok = True
-         #...........................................
-         #... Watch parameters
-         #...........................................
-         elif arg == "--Watch":
-            is_watch_ok = True
-         elif arg == "-py3path" and is_watch_ok == True:
-            python3_path = get_param_argurment(arg,count+1)
-         elif arg == "-text" and is_watch_ok == True:
-            watch_text = get_param_argurment(arg,count+1)
-         count = count + 1
+      ### ARG PARSER      
+      ###############
       
-      if count == 0:
-         show_help()
-         sys.exit()
-
-      ###############
-      ### ACTIONS      
-      ###############
-      show_info_header(dir)
       
-      if is_regexp_ok == True:
-         query_str_f = "REGEXP"
-         query_str_a = ""
-      else:
-         query_str_f = "like"
-         query_str_a = "escape '\\'"
+    parser.add_argument("--All", action="store_true", default=False,  dest='is_showall_ok', 
+                    help="(shows everything but the DOM data. Doesn't extract thumbnails or HTML 5 offline)")
+    parser.add_argument("--RegExp", action="store_true", default=False,  dest='is_regexp_ok', 
+                    help="(uses Regular Expresions for string type filters instead of Wildcards)")
+    parser.add_argument("--Summary", action="store_true", default=False,  dest='is_summary_ok', 
+                    help="(only shows debug messages and summary report)")
+    #...........................................
+    #... Cookie parameters
+    #...........................................        
+    parser.add_argument("--Cookies", action="store_true", default=False,  dest='is_cookie_ok',       
+          help="--Cookies [-showdom -domain <string> -name <string> -hostcookie <string> -access <date> -create <date> -secure <0/1> -httponly <0/1> -last_range <start> <end> -create_range <start> <end>]")  
+    parser.add_argument("-showdom", action="store_true",
+              help="[-showdom]")
+    parser.add_argument("-domain", nargs=1,
+              help="[-domain <string>]")
+    parser.add_argument("-name", nargs=1, 
+              help="[-name <string>]")
+    parser.add_argument("-hostcookie", nargs=1, 
+              help="[-hostcookie <string>]")
+    parser.add_argument("-access", nargs=1, 
+              help="[-access <date>]")
+    parser.add_argument("-create", nargs=1, 
+              help="[-create <date>]")
+    parser.add_argument("-secure", nargs=1, type=int,
+              help="[-secure <0/1>]")
+    parser.add_argument("-httponly", nargs=1, type=int,
+              help="[-httponly <0/1>]")
+    parser.add_argument("-last_range", nargs=2,
+              help="[-last_range <start> <end>]")
+    parser.add_argument("-create_range", nargs=2, 
+              help="[-create_range <start> <end>]")
+    #...........................................
+    #... Permissions parameters
+    #...........................................      
+    parser.add_argument("--Permissions", action="store_true", default=False,  dest='is_permissions_ok', 
+              help="--Permissions [-host <string> -type <string>  -modif <date> -modif_range <start> <end>]")   
+    parser.add_argument("-host", nargs=1,   
+              help="[-host <string>")   
+    parser.add_argument("-type", nargs=1,
+              help="[-type <string>]")   
+    parser.add_argument("-modif", nargs=1, 
+              help="[-modif <date>")   
+    parser.add_argument("-modif_range", nargs=2,
+            help="[-modif_range <start> <end>]")  
+    #...........................................
+    #... Preferences parameters
+    #...........................................
+    parser.add_argument("--Preferences", action="store_true", default=False,  dest='is_preferences_ok', 
+              help="")  
+    #...........................................
+    #... Addons parameters                                                                                                  
+    #...........................................
+    parser.add_argument("--Addons", action="store_true", default=False,  dest='is_addon_ok', 
+              help="")
+    #...........................................
+    #... Downloads parameters                                                                                                 
+    #...........................................
+    parser.add_argument("--Downloads", action="store_true", default=False,  dest='is_downloads_ok', 
+              help="--Downloads [-range <start> <end>]")
+    parser.add_argument("-range", nargs=2,
+              help="[-range <start> <end>]")   
+    #...........................................
+    #... Forms parameters                                                                                                 
+    #...........................................
+    parser.add_argument("--Forms", action="store_true", default=False,  dest='is_forms_ok', 
+              help="--Forms [-value <string> -forms_range <start> <end>]")
+    parser.add_argument("-value", nargs=1,
+              help="[-value <string>]")  
+    parser.add_argument("-forms_range", nargs=2,
+              help="[-forms_range <start> <end>]") 
+    #...........................................
+    #... History parameters
+    #...........................................      
+    parser.add_argument("--History", action="store_true", default=False,  dest='is_history_ok', 
+              help="--History [-url <string> -title <string> -date <date> -history_range <start> <end> -frequency]")   
+    parser.add_argument("-url", nargs=1,
+              help="[-url <string>]")   
+    parser.add_argument("-frequency", action="store_true", default=False,  dest='is_frequency_ok',
+              help="[-frequency]")   
+    parser.add_argument("-title", nargs=1, 
+              help="[-title <string>]")   
+    parser.add_argument("-date", nargs=1,
+              help="[-date <date>]")   
+    parser.add_argument("-history_range", nargs=2,
+              help="[-history_range <start> <end>]")   
+    #...........................................
+    #... Bookmarks parameters                                                                                                 
+    #...........................................
+    parser.add_argument("--Bookmarks", action="store_true", default=False,  dest='is_bookmarks_ok', 
+              help="--Bookmarks [-bookmarks_range <start> <end>]")
+    parser.add_argument("-bookmarks_range", nargs=2,
+              help="[-bookmarks_range <start> <end>]")                           
+    #...........................................
+    #... Passwords parameters                                                                                                 
+    #...........................................
+    parser.add_argument("--Passwords", action="store_true", default=False,  dest='is_passwords_ok', 
+              help="(decode only in Unix)")
+    #...........................................
+    #... Cache parameters                                                                                                 
+    #...........................................
+    parser.add_argument("--OfflineCache", action="store_true", default=False,  dest='is_cacheoff_ok', 
+              help="--OfflineCache [-cache_range <start> <end> -extract <directory>]") 
+    parser.add_argument("-cache_range", nargs=2, 
+              help="[-cache_range <start> <end>]") 
+    parser.add_argument("-extract", nargs=1, 
+              help="[-extract <directory>]") 
+    #...........................................
+    #... Certoverride parameters                                                                                                 
+    #...........................................
+    parser.add_argument("--Certoverride", action="store_true", default=False,  dest='is_cert_ok', 
+              help="")
+    #...........................................
+    #... Thumbnails parameters                                                                                                 
+    #...........................................
+    parser.add_argument("--Thumbnails", action="store_true", default=False,  dest='is_thump_ok', 
+              help="--Thumbnails [-extract_thumb <directory>]")
+    parser.add_argument("-extract_thumb", nargs=1,
+              help="[-extract_thumb <directory>]") 
+    #...........................................
+    #... Session parameters                                                                                                 
+    #...........................................
+    parser.add_argument("--Session", action="store_true", default=False,  dest='is_session_ok', 
+              help="")
+    #...........................................
+    #... Session2 parameters                                                                                                 
+    #...........................................
+    parser.add_argument("--Session2", action="store_true", default=False,  dest='is_session2_ok', 
+              help="")
+    #...........................................
+    #... Watch parameters                                                                                                 
+    #...........................................
+    parser.add_argument("--Watch", action="store_true", default=False,  dest='is_watch_ok', 
+              help="--Watch  [-text <string>] [-py3path <string>] (Shows in daemon mode the URLs and text form in real time)")
+    parser.add_argument("-py3path", nargs=1,
+              help="[-py3path <string>] (Option to set Python3 path instead off add the python3 path to the variable 'python3_path')")                 
+    parser.add_argument("-text", nargs=1,
+              help="[-text <string>] (-text Option allow filter, supports all grep Wildcards. Exit: Ctrl + C. only Unix)")
+
+    
+    args = parser.parse_args()
+     
+     #...........................................
+     #...........................................
+    dir = format(args.filename)
+    
+    if path.isdir(dir) and len(sys.argv) == 2:
+        save_message("ERROR","Missing parameters...")
+        show_help()
+
+    elif path.isdir(dir) and len(sys.argv) > 2:
       
-      if is_showall_ok == True:
-         All_execute(dir)
-      else:
-         anyexec = False
-         if is_cookie_ok == True:
-            show_cookies_firefox(dir)
-            anyexec = True
-         if is_permissions_ok == True:
-            show_permissions_firefox(dir)
-            anyexec = True
-         if is_preferences_ok == True:
-            show_preferences_firefox(dir)
-            anyexec = True
-         if is_addon_ok == True:
-            show_addons_firefox(dir)
-            show_extensions_firefox(dir)
-            show_info_addons(dir)
-            show_search_engines(dir)
-            anyexec = True
-         if is_downloads_ok == True:
-            show_downloads_firefox(dir)
-            show_downloads_history_firefox(dir)
-            show_downloadsdir_firefox(dir)
-            anyexec = True
-         if is_forms_ok == True:
-            show_forms_firefox(dir)
-            anyexec = True
-         if is_history_ok == True:
-            show_history_firefox(dir)
-            anyexec = True
-         if is_bookmarks_ok == True:
-            show_bookmarks_firefox(dir)
-            anyexec = True
-         if is_passwords_ok == True:
-            show_passwords_firefox(dir)   
-            anyexec = True
-         if is_cacheoff_ok == True:
-            show_cache(dir)
-            anyexec = True
-         if is_cacheoff_ok == True and is_cacheoff_extract_ok == True: 
-            show_cache_extract(dir, cacheoff_directory)
-            anyexec = True
-         if is_cert_ok == True:
-            show_cert_override(dir)
-            anyexec = True
-         if is_thump_ok == True:
-            show_thumbnails(dir, thumb_directory)
-            anyexec = True
-         if is_session_ok == True:
-            show_session(dir)
-            anyexec = True
-         if is_session2_ok == True:
-            extract_data_session_watch(dir)
-            anyexec = True
-         if is_watch_ok == True:
-            show_watch(dir,watch_text)
-            anyexec = True
-         if is_summary_ok and not anyexec:
-            All_execute(dir)
+        dir = path.abspath(dir)
+        save_message("INFO","Profile Path: " + dir)
+    
+        if args.is_cookie_ok:
+             if args.showdom:
+                 is_dom_ok = True
+             if args.domain:
+                 cookie_domain = format(args.domain)
+                 cookie_filters.append(["string","baseDomain",cookie_domain])
+                 domain_filters.append(["string","scope",cookie_domain])
+             if args.name:
+                 cookie_name = format(args.name)
+                 cookie_filters.append(["string","name",cookie_name])
+             if args.hostcookie:
+                 cookie_host = format(args.hostcookie)
+                 cookie_filters.append(["string","host",cookie_host])
+             if args.access:
+                 cookie_access_date = validateDate(format(args.access))
+                 cookie_filters.append(["date","last",cookie_access_date]) 
+             if args.create:
+                 cookie_create_date = validateDate(format(args.create))
+                 cookie_filters.append(["date","creat",cookie_create_date]) 
+             if args.secure:
+                 cookie_secure = format(args.secure)
+                 cookie_filters.append(["number","isSecure",cookie_secure]) 
+             if args.httponly:
+                 cookie_httponly = format(args.httponly)
+                 cookie_filters.append(["number","isHttpOnly",cookie_httponly]) 
+             if args.last_range:
+                 cookie_access_range1 = validateDate(format(args.last_range[0]))
+                 cookie_access_range2 = validateDate(format(args.last_range[1]))
+                 cookie_filters.append(["range","last",[cookie_access_range1,cookie_access_range2]]) 
+             if args.create_range:
+                 cookie_create_range1 = validateDate(format(args.create_range[0]))
+                 cookie_create_range2 = validateDate(format(args.create_range[1]))
+                 cookie_filters.append(["range","creat",[cookie_create_range1,cookie_create_range2]]) 
+         
+         
+        if args.is_permissions_ok:
+             if args.host:
+                 permissions_host = format(args.host)
+                 permissions_filters.append(["string","host",permissions_host]) 
+             if args.type:
+                 permissions_type = format(args.type)
+                 permissions_filters.append(["string","type",permissions_type]) 
+             if args.modif:
+                 permissions_modif_date = validateDate(format(args.modif))
+                 permissions_filters.append(["date","modif",permissions_modif_date]) 
+             if args.modif_range:
+                 permissions_modif_range1 = validateDate(format(args.modif_range[0]))
+                 permissions_modif_range2 = validateDate(format(args.modif_range[1]))
+                 permissions_filters.append(["range","modif",[permissions_modif_range1,permissions_modif_range2]]) 
+                
+              
+        if args.is_downloads_ok:
+             if args.range:
+                 downloads_range1 = validateDate(format(args.range[0]))
+                 downloads_range2 = validateDate(format(args.range[1]))
+                 downloads_filters.append(["range","start",[downloads_range1,downloads_range2]]) 
+                 downloads_history_filters.append(["range","modified",[downloads_range1,downloads_range2]]) 
+    
+    
+        if args.is_forms_ok:
+             if args.value:
+                 forms_value = format(args.value)
+                 forms_filters.append(["string","value",forms_value])   
+             if args.forms_range:
+                 forms_range1 = validateDate(format(args.forms_range[0]))
+                 forms_range2 = validateDate(format(args.forms_range[1]))
+                 forms_filters.append(["range","last",[forms_range1,forms_range2]]) 
+    
+    
+        if args.is_history_ok:
+             if args.url:
+                 history_url =  format(args.url)
+                 history_filters.append(["string","url",history_url])
+             if args.title:
+                 history_title = format(args.title)
+                 history_filters.append(["string","title",history_title])
+             if args.date:
+                 history_date = validateDate(format(args.date))
+                 history_filters.append(["date","last",history_date])
+             if args.history_range:
+                 history_range1 = validateDate(format(args.history_range[0]))
+                 history_range2 = validateDate(format(args.history_range[1]))
+                 history_filters.append(["range","last",[history_range1,history_range2]])
+    
+    
+        if args.is_bookmarks_ok:
+             if args.bookmarks_range:
+                 bookmarks_range1 = validateDate(format(args.bookmarks_range[0]))
+                 bookmarks_range2 = validateDate(format(args.bookmarks_range[1]))
+                 bookmarks_filters.append(["range","last",[bookmarks_range1,bookmarks_range2]])
+    
+    
+        if args.is_cacheoff_ok:
+             if args.cache_range:
+                 cacheoff_range1 = format(args.cache_range[0])
+                 cacheoff_range2 = format(args.cache_range[1])
+                 cacheoff_filters.append(["range","last",[cacheoff_range1,cacheoff_range2]])
+             if args.extract:
+                 is_cacheoff_extract_ok = True
+                 cacheoff_directory = format(args.extract)
+    
+    
+        if args.is_thump_ok:
+             if args.extract_thumb:
+                 thumb_directory = format(args.extract_thumb)
+    
+    
+        if args.is_watch_ok:
+             if args.py3path:
+                 python3_path = format(args.py3path)
+             if args.text:
+                 watch_text = format(args.text)
+    
+          
+        if len(vars(args)) == 0:
+            show_help()
+            sys.exit()
+    
+          ###############
+          ### ACTIONS      
+          ###############
+        show_info_header(dir)
+          
+        if args.is_regexp_ok:
+             query_str_f = "REGEXP"
+             query_str_a = ""
+        else:
+             query_str_f = "like"
+             query_str_a = "escape '\\'"
+          
+        if args.is_showall_ok:
+             save_message("INFO","All parameters")
+             All_execute(dir)
+        else:
+             anyexec = False
+             if args.is_cookie_ok:
+                show_cookies_firefox(dir)
+                anyexec = True
+             if args.is_permissions_ok:
+                show_permissions_firefox(dir)
+                anyexec = True
+             if args.is_preferences_ok:
+                show_preferences_firefox(dir)
+                anyexec = True
+             if args.is_addon_ok:
+                show_addons_firefox(dir)
+                show_extensions_firefox(dir)
+                show_info_addons(dir)
+                show_search_engines(dir)
+                anyexec = True
+             if args.is_downloads_ok:
+                show_downloads_firefox(dir)
+                show_downloads_history_firefox(dir)
+                show_downloadsdir_firefox(dir)
+                anyexec = True
+             if args.is_forms_ok:
+                show_forms_firefox(dir)
+                anyexec = True
+             if args.is_history_ok:
+                show_history_firefox(dir)
+                anyexec = True
+             if args.is_bookmarks_ok:
+                show_bookmarks_firefox(dir)
+                anyexec = True
+             if args.is_passwords_ok:
+                show_passwords_firefox(dir)   
+                anyexec = True
+             if args.is_cacheoff_ok:
+                show_cache(dir)
+                anyexec = True
+             if args.is_cacheoff_ok and is_cacheoff_extract_ok: 
+                show_cache_extract(dir, cacheoff_directory)
+                anyexec = True
+             if args.is_cert_ok:
+                show_cert_override(dir)
+                anyexec = True
+             if args.is_thump_ok:
+                show_thumbnails(dir, thumb_directory)
+                anyexec = True
+             if args.is_session_ok:
+                show_session(dir)
+                anyexec = True
+             if args.is_session2_ok:
+                extract_data_session_watch(dir)
+                anyexec = True
+             if args.is_watch_ok:
+                show_watch(dir,watch_text)
+                anyexec = True
+             if args.is_summary_ok and not anyexec:
+                All_execute(dir)
+    
+          ###############
+          ### SUMMARY      
+          ###############
+    
+        if args.is_regexp_ok == True:
+             save_message("INFO","Using Regular Expression mode for string type filters")
+    
+          ### HEADERS
+        titles = {
+           "decode"              : "Decode Passwords     ",
+           "passwords"           : "Passwords            ",
+           "exceptions"          : "Exceptions/Passwords ",
+           "cookies"             : "Cookies              ",
+           "dom"                 : "DOM Storage          ",
+           "permissions"         : "Permissions          ",
+           "preferences"         : "Preferences          ",
+           "addons"              : "Addons               ",
+           "addinfo"             : "Addons (URLS/PATHS)  ",
+           "extensions"          : "Extensions           ",
+           "engines"             : "Search Engines       ",
+           "downloads"           : "Downloads            ",
+           "downloads_history"   : "Downloads history    ",
+           "downloads_dir"       : "Directories          ",
+           "forms"               : "Forms                ",
+           "history"             : "History              ",
+           "bookmarks"           : "Bookmarks            ",
+           "offlinecache"        : "OfflineCache Html5   ",
+           "offlinecache_extract": "OfflineCache Extract ",
+           "thumbnails"          : "Thumbnails images    ",
+           "cert_override"       : "Cert override        ",
+           "session"             : "Sessions             "
+        }
+    
+        info_headers = sorted(total_extraction.keys())
+        summary = {}
+    
+        for header in info_headers:
+             sources = total_extraction[header].keys()
+             for source in sources:
+                # INFO HEADER BY SOURCE
+                if not is_summary_ok:
+                   if path.isfile(source):
+                      show_title(titles[header] +show_sha256(source), 302)
+                   else:
+                      show_title(titles[header], 243)
+    
+                if header in summary.keys():
+                   summary[header] = summary[header] + len(total_extraction[header][source])
+                else:
+                   summary[header] = len(total_extraction[header][source])
+    
+                if summary[header] > 0:
+                   for i in total_extraction[header][source]:
+                      tags = sorted(i.keys())
+                      for tag in tags:
+                         if not is_summary_ok:
+                            if i[tag]:
+                               print(tag.split('-',1)[1] + ": " + str(i[tag]))
+                            else:
+                               print(tag.split('-',1)[1] + ": ")
+                      if not is_summary_ok:
+                         print("")
+                else:
+                   if not is_summary_ok:
+                      print("No data found!")
+                   summary[header] = 0
+    
+        info_headers = sorted(summary.keys())
+    
+        if len(info_headers) == 0 and arg_count > 0:
+             show_title("Total Information", 243)
+             print("No data found!")
+        elif len(info_headers) == 0:
+             save_message("ERROR","Missing argument!")
+             show_help()
+        else:
+             show_title("Total Information", 243)
+             for header in info_headers:
+                print("Total " + titles[header] + ": " + str(summary[header]))
+        print("")
 
-      ###############
-      ### SUMMARY      
-      ###############
-
-      if is_regexp_ok == True:
-         save_message("INFO","Using Regular Expression mode for string type filters")
-
-      ### HEADERS
-      titles = {
-       "decode"              : "Decode Passwords     ",
-       "passwords"           : "Passwords            ",
-       "exceptions"          : "Exceptions/Passwords ",
-       "cookies"             : "Cookies              ",
-       "dom"                 : "DOM Storage          ",
-       "permissions"         : "Permissions          ",
-       "preferences"         : "Preferences          ",
-       "addons"              : "Addons               ",
-       "addinfo"             : "Addons (URLS/PATHS)  ",
-       "extensions"          : "Extensions           ",
-       "engines"             : "Search Engines       ",
-       "downloads"           : "Downloads            ",
-       "downloads_history"   : "Downloads history    ",
-       "downloads_dir"       : "Directories          ",
-       "forms"               : "Forms                ",
-       "history"             : "History              ",
-       "bookmarks"           : "Bookmarks            ",
-       "offlinecache"        : "OfflineCache Html5   ",
-       "offlinecache_extract": "OfflineCache Extract ",
-       "thumbnails"          : "Thumbnails images    ",
-       "cert_override"       : "Cert override        ",
-       "session"             : "Sessions             "
-      }
-
-      info_headers = sorted(total_extraction.keys())
-      summary = {}
-
-      for header in info_headers:
-         sources = total_extraction[header].keys()
-         for source in sources:
-            # INFO HEADER BY SOURCE
-            if not is_summary_ok:
-               if path.isfile(source):
-                  show_title(titles[header] +show_sha256(source), 302)
-               else:
-                  show_title(titles[header], 243)
-
-            if header in summary.keys():
-               summary[header] = summary[header] + len(total_extraction[header][source])
-            else:
-               summary[header] = len(total_extraction[header][source])
-
-            if summary[header] > 0:
-               for i in total_extraction[header][source]:
-                  tags = sorted(i.keys())
-                  for tag in tags:
-                     if not is_summary_ok:
-                        if i[tag]:
-                           print(tag.split('-',1)[1] + ": " + str(i[tag]))
-                        else:
-                           print(tag.split('-',1)[1] + ": ")
-                  if not is_summary_ok:
-                     print("")
-            else:
-               if not is_summary_ok:
-                  print("No data found!")
-               summary[header] = 0
-
-      info_headers = sorted(summary.keys())
-
-      if len(info_headers) == 0 and arg_count > 0:
-         show_title("Total Information", 243)
-         print("No data found!")
-      elif len(info_headers) == 0:
-         save_message("ERROR","Missing argument!")
-         show_help()
-      else:
-         show_title("Total Information", 243)
-         for header in info_headers:
-            print("Total " + titles[header] + ": " + str(summary[header]))
-      print("")
-
-   else:
-      save_message("ERROR","Failed to read profile directory")
+    else:
+      save_message("ERROR","Failed to read profile directory: " + dir)
       show_help()
       sys.exit()
 
