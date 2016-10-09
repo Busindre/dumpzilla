@@ -18,7 +18,7 @@ import argparse
 
 magicpath = 'C:\WINDOWS\system32\magic' # Only in Windows, path to magic file (Read Manual in www.dumpzilla.org)
 
-query_str_f = "" 
+query_str_f = ""
 query_str_a = ""
 
 output_mode = 0 # Output modes: 0 - Standart output (default)
@@ -30,7 +30,7 @@ arg_count = 0
 #########################
 # TOTAL EXTRACTION DICT
 #########################
-total_extraction = {} 
+total_extraction = {}
 
 #~~~~~~~~~~~~~~#
 # ^ Structure  #
@@ -38,124 +38,88 @@ total_extraction = {}
 #
 #     {
 #        parameter1 : {
-#          absolute_file1_path : [ 
+#          absolute_file1_path : [
 #                                   { column1_name : value, column2_name : value, (...), columnN_name : value },
 #                                   { column1_name : value, column2_name : value, (...), columnN_name : value },
 #                                   (...)
 #                                   { column1_name : value, column2_name : value, (...), columnN_name : value }
 #                                ],
-#          absolute_fileN_path : [ 
+#          absolute_fileN_path : [
 #                                   { column1_name : value, column2_name : value, (...), columnN_name : value },
 #                                   { column1_name : value, column2_name : value, (...), columnN_name : value },
 #                                   (...)
 #                                   { column1_name : value, column2_name : value, (...), columnN_name : value }
-#                                ]                
+#                                ]
 #        },
 #
 #     (...)
 #
 #        parameterN : {
-#          absolute_file1_path : [ 
+#          absolute_file1_path : [
 #                                   { column1_name : value, column2_name : value, (...), columnN_name : value },
 #                                   { column1_name : value, column2_name : value, (...), columnN_name : value },
 #                                   (...)
 #                                   { column1_name : value, column2_name : value, (...), columnN_name : value }
 #                                ],
-#          absolute_fileN_path : [ 
+#          absolute_fileN_path : [
 #                                   { column1_name : value, column2_name : value, (...), columnN_name : value },
 #                                   { column1_name : value, column2_name : value, (...), columnN_name : value },
 #                                   (...)
 #                                   { column1_name : value, column2_name : value, (...), columnN_name : value }
-#                                ]                
+#                                ]
 #        }
 #     }
 #
 
 ###############
-### DEFAULTS      
+### DEFAULTS
 ###############
-      
+
 # Valid parameters
-parameters = ["--All", "--Preferences", "--Summary", "--RegExp", "--Cookies", "-showdom", "-domain", "-name", "-hostcookie", "-access", "-create", "-secure", "-httponly", "-last_range", "-last_range", "-create_range", "--Permissions", "-host", "-type","-modif","-modif_range","--Addons", "--Downloads", "-range", "--Forms", "-value", "-forms_range", "--History", "-url", "-frequency", "-title", "-date", "-history_range", "--Bookmarks", "-bookmarks_range", "--Passwords", "--OfflineCache", "-cache_range", "-extract", "--Certoverride", "--Thumbnails", "-extract_thumb", "--Session", "--Watch", "-text", "--Session2", "-py3path"]
+# parameters = ["--All", "--Preferences", "--Summary", "--RegExp", "--Cookies", "-showdom", "-domain", "-name", "-hostcookie", "-access", "-create", "-secure", "-httponly", "-last_range", "-last_range", "-create_range", "--Permissions", "-host", "-type","-modif","-modif_range","--Addons", "--Downloads", "-range", "--Forms", "-value", "-forms_range", "--History", "-url", "-frequency", "-title", "-date", "-history_range", "--Bookmarks", "-bookmarks_range", "--Passwords", "--OfflineCache", "-cache_range", "-extract", "--Certoverride", "--Thumbnails", "-extract_thumb", "--Session", "--Watch", "-text", "--Live"]
 
 # TODO: Make a object with all parameters' info
 
-# --Cookies 
+# --Cookies
 cookie_filters = []
 domain_filters = []
-is_cookie_ok = False
 is_dom_ok = False
 
 # --Permissions
-is_permissions_ok = False
 permissions_filters = []
-      
-# --Preferences
-is_preferences_ok = False
-
-# --Addons
-is_addon_ok = False
 
 # --Downloads
-is_downloads_ok = False
 downloads_filters = []
 downloads_history_filters = []
 
 # --Forms
-is_forms_ok = False
 forms_filters = []
 
 # --History
-is_history_ok = False
-is_frequency_ok = False
 history_filters = []
 
 # --Bookmarks
-is_bookmarks_ok = False
 bookmarks_filters = []
 
-# --Passwords
-is_passwords_ok = False
-
 # --OfflineCache Cache
-is_cacheoff_ok = False
 is_cacheoff_extract_ok = False
 cacheoff_filters = []
 cacheoff_directory = None
 
-# --Certoverride
-is_cert_ok = False
-
 # --Thumbnails
-is_thump_ok = False
 thumb_filters = []
 
-# --RegExp
-is_regexp_ok = False
-
-# --Session
-is_session_ok = False
-is_session2_ok = False
-
-# --Summary
-is_summary_ok = False
-
 # --Watch
-is_watch_ok = False
 watch_text = 1
 
+args = None
+
 # Debug messages list [message_type, message] (INFO, WARNING, ERROR)
-message_list = [] 
+message_list = []
 
 watchsecond = 4 # --Watch option: Seconds update. (NO Windows)
-python_def = '/usr/bin/python3.4'
-
-python3_path = input('Python 3 path (Press Enter for default - /usr/bin/python3.4): ').strip() # Python 3.x path (NO Windows). Example: /usr/bin/python3.4
-
-if python3_path == '':
-    python3_path = python_def
-    
-
+PYTHON3_DEF  = '/usr/bin/python3'
+PYTHON3_PATH = ''
 
 if sys.platform.startswith('win') == False:
    libnss = CDLL("libnss3.so")
@@ -214,9 +178,9 @@ def save_message(_type, _text):
    message_list.append([_type,_text])
 
 def show_info_header(profile):
-   if sys.version.startswith('2.') == True and is_session2_ok == False and is_passwords_ok == False:
+   if sys.version.startswith('2.') == True and args.is_live_ok == False and args.is_passwords_ok == False:
       save_message("WARNING", "Python 2.x currently used, Python 3.x and UTF-8 is recommended!")
-   elif is_session2_ok == False:
+   elif args.is_live_ok == False:
       save_message("INFO", "Execution time: " + str(datetime.now()))
       save_message("INFO", "Mozilla Profile: " + str(profile))
 
@@ -243,7 +207,7 @@ def validateDate(date_str):
    if not regexp('^[0-9_%:\- ]{1,19}$',date_str):
       save_message("WARNING","Erroneous date '"+date_str+"' : Check wildcards ('%' '_' '/') and format (YYYY-MM-DD hh:mi:ss)")
    return date_str
-      
+
 def executeQuery(cursor,sqlite_query,filters,orderby = None):
    sqlite_param = []
    cnt = 0
@@ -274,10 +238,10 @@ def executeQuery(cursor,sqlite_query,filters,orderby = None):
          sqlite_query = sqlite_query + filter[1] + " = " + filter[2]
       sqlite_query = sqlite_query + ")"
       cnt = cnt + 1
-   
+
    if orderby is not None:
       sqlite_query = sqlite_query + " " + orderby
-   
+
    #debug# print("%s - %s" % (sqlite_query,sqlite_param))
 
    cursor.execute(sqlite_query,sqlite_param)
@@ -294,15 +258,15 @@ def show_sha256(filepath):
    finally:
       f.close()
    return "[SHA256 hash: "+sha256.hexdigest()+"]"
-   
+
 #############################################################################################################
-### DECODE PASSWORDS 
+### DECODE PASSWORDS
 #############################################################################################################
 
 def readsignonDB(dir):
    passwords_sources = ["signons.sqlite","logins.json"]
    decode_passwords_extraction_dict = {}
-   
+
    if libnss.NSS_Init(dir)!=0:
       save_message("ERROR","Error Initializing NSS_Init, probably no useful results.")
 
@@ -313,7 +277,7 @@ def readsignonDB(dir):
       # Checking source file
       if path.isfile(bbdd) == True:
          if a.endswith(".json") == True:
-            # JSON 
+            # JSON
             f = open(bbdd)
             jdata = json.loads(f.read())
             f.close()
@@ -325,7 +289,7 @@ def readsignonDB(dir):
                   uname.len = len(b64decode(l.get("encryptedUsername")))
                   passwd.data = cast(c_char_p(b64decode(l.get("encryptedPassword"))),c_void_p)
                   passwd.len=len(b64decode(l.get("encryptedPassword")))
-                  
+
                   if libnss.PK11SDR_Decrypt(byref(uname),byref(dectext),byref(pwdata))==-1:
                      save_message("ERROR","Master Password used!")
                      return
@@ -343,11 +307,11 @@ def readsignonDB(dir):
 
             decode_passwords_extraction_dict[bbdd] = _extraction_list
 
-            
+
          elif a.endswith(".sqlite"):
             # SQLITE
             conn = sqlite3.connect(bbdd)
-            conn.text_factory = bytes  
+            conn.text_factory = bytes
             cursor = conn.cursor()
             cursor.execute("select hostname, encryptedUsername, encryptedPassword from moz_logins")
             _extraction_list = []
@@ -377,15 +341,15 @@ def readsignonDB(dir):
 
             conn.close()
             libnss.NSS_Shutdown()
-         
+
    if len(decode_passwords_extraction_dict) == 0:
       save_message("WARNING","Passwords database not found! Please, check file " + '|'.join(passwords_sources))
    else:
       # Saving extraction to main extraction list
-      total_extraction["decode"] = decode_passwords_extraction_dict 
+      total_extraction["decode"] = decode_passwords_extraction_dict
 
 
-  
+
 ###############################################################################################################
 ### PASSWORDS
 ###############################################################################################################
@@ -402,11 +366,11 @@ def show_passwords_firefox(dir):
       # Checking source file
       if path.isfile(bbdd) == True:
          if a.endswith(".json") == True:
-            # JSON 
+            # JSON
             f = open(bbdd)
             jdata = json.loads(f.read())
             f.close()
-            
+
             _extraction_list = []
             for l in jdata.get("logins"):
                _extraction_dict = {}
@@ -417,30 +381,30 @@ def show_passwords_firefox(dir):
                   _extraction_dict['3-User login (crypted)'] = l.get("encryptedUsername")
                   _extraction_dict['4-Password login (crypted)'] = l.get("encryptedPassword")
                   #_extraction_dict['99-Encripton type'] = l.get("encType")
-                  
+
                   create_date = datetime.fromtimestamp(int(l.get("timeCreated"))/1000).strftime('%Y-%m-%d %H:%M:%S')
                   _extraction_dict['5-Created'] = create_date
-                  
+
                   lastuse_date = datetime.fromtimestamp(int(l.get("timeLastUsed"))/1000).strftime('%Y-%m-%d %H:%M:%S')
                   _extraction_dict['6-Last used'] = lastuse_date
-                  
+
                   change_date = datetime.fromtimestamp(int(l.get("timePasswordChanged"))/1000).strftime('%Y-%m-%d %H:%M:%S')
                   _extraction_dict['7-Change'] = change_date
                   _extraction_dict['8-Frequency'] = l.get("timesUsed")
-                  
+
                   _extraction_list.append(_extraction_dict)
 
             passwords_extraction_dict[bbdd] = _extraction_list
 
          elif a.endswith(".sqlite"):
             # SQLITE
-            
+
             ### Exceptions
             conn = sqlite3.connect(bbdd)
             conn.text_factory = bytes
             cursor = conn.cursor()
             cursor.execute('select hostname from moz_disabledHosts')
-            
+
             _extraction_list = []
             for row in cursor:
                _extraction_dict = {}
@@ -468,10 +432,10 @@ def show_passwords_firefox(dir):
                _extraction_list.append(_extraction_dict)
 
             passwords_extraction_dict[bbdd] = _extraction_list
-            
+
             cursor.close()
             conn.close()
-   
+
    if len(exception_extraction_dict) > 0:
       total_extraction["exceptions"] = exception_extraction_dict
 
@@ -484,9 +448,9 @@ def show_passwords_firefox(dir):
          readsignonDB(dir)
       elif count == 0:
          save_message("WARNING","Users not found!")
-      else:    
+      else:
          save_message("ERROR","Decode password only in GNU/Linux with python 2.x! EXAMPLE: python2.7 dumpzilla.py yle8qt6e.default --Passwords")
-   
+
 ###############################################################################################################
 ### SHOW ALL DATA                                                                                             #
 ###############################################################################################################
@@ -514,7 +478,7 @@ def All_execute(dir):
 ###############################################################################################################
 ### COOKIES                                                                                                   #
 ###############################################################################################################
-   
+
 def show_cookies_firefox(dir):
    cookies_extraction_dict = {}
    dom_extraction_dict = {}
@@ -524,17 +488,17 @@ def show_cookies_firefox(dir):
    if path.isfile(bbdd) == False:
       save_message("WARNING","Cookies database not found! Please, check file cookies.sqlite")
       return
-   
+
    conn = sqlite3.connect(bbdd)
    conn.text_factory = bytes
-   
-   if is_regexp_ok == True:
+
+   if args.is_regexp_ok == True:
       conn.create_function("REGEXP", 2, regexp)
-   
+
    cursor = conn.cursor()
    sqlite_query = "select baseDomain, name, value, host, path, datetime(expiry, 'unixepoch', 'localtime'), datetime(lastAccessed/1000000,'unixepoch','localtime') as last ,datetime(creationTime/1000000,'unixepoch','localtime') as creat, isSecure, isHttpOnly FROM moz_cookies"
    executeQuery(cursor,sqlite_query,cookie_filters)
-   
+
    _extraction_list = []
    for row in cursor:
       _extraction_dict = {}
@@ -546,21 +510,21 @@ def show_cookies_firefox(dir):
       _extraction_dict['5-Expiry'] = decode_reg(row[5])
       _extraction_dict['6-Last Access'] = decode_reg(row[6])
       _extraction_dict['7-Creation Time'] = decode_reg(row[7])
-      
+
       if decode_reg(row[8]) == 0:
          _extraction_dict['8-Secure'] =  'No'
       else:
          _extraction_dict['8-Secure'] =  'Yes'
-      
+
       if decode_reg(row[9]) == 0:
          _extraction_dict['9-HttpOnly'] =  'No'
       else:
          _extraction_dict['9-HttpOnly'] =  'Yes'
-      
+
       _extraction_list.append(_extraction_dict)
 
    cookies_extraction_dict[bbdd] = _extraction_list
-      
+
    if len(cookies_extraction_dict) > 0:
       # Saving extraction to main extraction list
       total_extraction["cookies"] = cookies_extraction_dict
@@ -578,18 +542,18 @@ def show_cookies_firefox(dir):
       if path.isfile(bbdd) == False:
          save_message("WARNING","Webappsstore database not found! Please, check file webappsstore.sqlite")
          return
-      
+
       # WARNING! Only RegExp filter allowed!
-      if len(domain_filters) > 0 and is_regexp_ok == False :
+      if len(domain_filters) > 0 and args.is_regexp_ok == False :
          save_message("WARNING","Showing all DOM storage, to filter please use RegExp parameter")
-         
+
       conn = sqlite3.connect(bbdd)
       conn.text_factory = bytes
       cursor = conn.cursor()
-      
-      sqlite_query = "select scope, value from webappsstore2"      
+
+      sqlite_query = "select scope, value from webappsstore2"
       cursor.execute(sqlite_query)
-      
+
       _extraction_list = []
       for row in cursor:
          _extraction_dict = {}
@@ -600,7 +564,7 @@ def show_cookies_firefox(dir):
             fd = path.split(decode_reg(row[0])[::-1])[1].rsplit(':.', 1)[1]
          # -domain filter
          show_this_domain = True
-         if len(domain_filters) > 0 and  is_regexp_ok == True:
+         if len(domain_filters) > 0 and  args.is_regexp_ok == True:
             show_this_domain = regexp(domain_filters[0][2],fd)
 
          if show_this_domain == True:
@@ -610,7 +574,7 @@ def show_cookies_firefox(dir):
          _extraction_list.append(_extraction_dict)
 
       dom_extraction_dict[bbdd] = _extraction_list
-      
+
       total_extraction["dom"] = dom_extraction_dict
 
       cursor.close()
@@ -631,13 +595,13 @@ def show_permissions_firefox(dir):
 
    conn = sqlite3.connect(bbdd)
    conn.text_factory = bytes
-   
-   if is_regexp_ok == True:
+
+   if args.is_regexp_ok == True:
       conn.create_function("REGEXP", 2, regexp)
-   
+
    # Old table for permissions
-   permissions_tables = ["moz_hosts"] 
-   
+   permissions_tables = ["moz_hosts"]
+
    # New table for permissions (checking if exists)
    cursor = conn.cursor()
    sqlite_query = "select count(*) from sqlite_master"
@@ -682,7 +646,7 @@ def show_permissions_firefox(dir):
                save_message("WARNING","modificationTime : Column not found in permissions database")
 
       executeQuery(cursor,sqlite_query,permissions_filters)
-   
+
       for row in cursor:
          _extraction_dict = {}
          _extraction_dict['0-Host'] = decode_reg(row[0])
@@ -692,14 +656,14 @@ def show_permissions_firefox(dir):
             _extraction_dict['3-Expire Time'] = 'Not expire'
          else:
             _extraction_dict['3-Expire Time'] = decode_reg(row[4])
-         
+
          if modificationTime_found:
             _extraction_dict['4-Modification Time'] = decode_reg(row[5])
          _extraction_list.append(_extraction_dict)
       cursor.close()
 
    permissions_extraction_dict[bbdd] = _extraction_list
-    
+
    total_extraction["permissions"] = permissions_extraction_dict
 
    cursor.close()
@@ -708,7 +672,7 @@ def show_permissions_firefox(dir):
 ###############################################################################################################
 ### PREFERENCES                                                                                               #
 ###############################################################################################################
-   
+
 def show_preferences_firefox(dir):
    preferences_extraction_dict = {}
 
@@ -724,7 +688,7 @@ def show_preferences_firefox(dir):
    _extraction_list = []
    for line in open(dirprefs):
       _extraction_dict = {}
-      
+
       if "user_pref(" in line:
          count_alpha = str(count).zfill(6)
          code = line.split()[0][:-2].replace("\"", "").replace("user_pref(", "")
@@ -736,7 +700,7 @@ def show_preferences_firefox(dir):
             if regexp("^197",tmstmp):
                tmstmp = datetime.fromtimestamp(int(value)).strftime('%Y-%m-%d %H:%M:%S')
             value = tmstmp
-         
+
          # Transforming description
          code_list = code.split('.')
          cnt = 0
@@ -790,12 +754,12 @@ def show_preferences_firefox(dir):
       #    _extraction_dict["19-URL proxy autoconfig"] = line.split()[1][:-2].replace("\"", "")
       # elif "network.proxy.type" in line:
       #    _extraction_dict["20-Type Proxy"] = line.split()[1][:-2].replace("\"", "")+" (0: No proxy | 4: Auto detect settings | 1: Manual configuration | 2: URL autoconfig)"
-      
-      if len(_extraction_dict) > 0: 
+
+      if len(_extraction_dict) > 0:
          _extraction_list.append(_extraction_dict)
 
    preferences_extraction_dict[dirprefs] = _extraction_list
-    
+
    total_extraction["preferences"] = preferences_extraction_dict
 
 ###############################################################################################################
@@ -831,11 +795,11 @@ def show_addons_firefox(dir):
                   _extraction_list.append(_extraction_dict)
 
             addons_extraction_dict[bbdd] = _extraction_list
-            
+
          elif a.endswith(".sqlite"):
             # SQLITE
             conn = sqlite3.connect(bbdd)
-            conn.text_factory = bytes  
+            conn.text_factory = bytes
             cursor = conn.cursor()
             cursor.execute("select name,version,creatorURL,homepageURL from addon")
             _extraction_list = []
@@ -846,7 +810,7 @@ def show_addons_firefox(dir):
                _extraction_dict['2-Creator URL'] = decode_reg(row[1])
                _extraction_dict['3-Homepage URL'] = decode_reg(row[2])
                _extraction_list.append(_extraction_dict)
-             
+
             addons_extraction_dict[bbdd] = _extraction_list
 
             cursor.close()
@@ -865,12 +829,12 @@ def show_addons_firefox(dir):
 def show_info_addons(dir):
    addinfo_extraction_dict = {}
    addinfo_found = False
-   addinfo_sources = ["xulstore.json","localstore.rdf"]  
+   addinfo_sources = ["xulstore.json","localstore.rdf"]
 
    for a in addinfo_sources:
       # Setting filename by OS
       filepath = get_path_by_os(dir, a)
-      
+
       # Checking source file
       if path.isfile(filepath) == True:
 
@@ -889,9 +853,9 @@ def show_info_addons(dir):
             else:
                for key, value in jdata.items():
                   _extraction_list.append({"0-URL/PATH":"\"" + key + "\""})
-            
+
             addinfo_extraction_dict[filepath] = _extraction_list
-                     
+
          if a.endswith(".rdf") == True:
             # RDF
             filead = open(filepath)
@@ -914,13 +878,13 @@ def show_info_addons(dir):
 
             if y == 0:
                save_message("INFO","The Addons-Info database " + a + " does not contain URLs or paths!")
-   
+
    if len(addinfo_extraction_dict) > 0:
       # Saving extraction to main extraction list
       total_extraction["addinfo"] = addinfo_extraction_dict
    elif addinfo_found == False:
       save_message("WARNING","Addons-Info database not found! Please, check file " + '|'.join(addinfo_sources))
-   
+
 ###############################################################################################################
 ### EXTENSIONS                                                                                                #
 ###############################################################################################################
@@ -928,12 +892,12 @@ def show_info_addons(dir):
 def show_extensions_firefox(dir):
    ext_extraction_dict = {}
    ext_found = False
-   ext_sources = ["extensions.json","extensions.sqlite"]  
-   
+   ext_sources = ["extensions.json","extensions.sqlite"]
+
    for a in ext_sources:
       # Setting filename by OS
       filepath = get_path_by_os(dir, a)
-      
+
       # Checking source file
       if path.isfile(filepath) == True:
 
@@ -942,7 +906,7 @@ def show_extensions_firefox(dir):
          if a.endswith(".json") == True:
             # JSON
             if not sys.version.startswith('2.'):
-               jdata = json.load(open(filepath, encoding='utf8')) 
+               jdata = json.load(open(filepath, encoding='utf8'))
             else:
                jdata = json.load(open(filepath))
             try:
@@ -956,13 +920,13 @@ def show_extensions_firefox(dir):
                      _extraction_dict['3-Descriptor'] = ext.get("descriptor")
                      _extraction_dict['4-Version'] = ext.get("version")
                      _extraction_dict['5-Release'] = ext.get("release")
-                     
+
                      install_date = datetime.fromtimestamp(int(ext.get("installDate"))/1000).strftime('%Y-%m-%d %H:%M:%S')
                      _extraction_dict['6-Install Date'] = install_date
-                     
+
                      update_date = datetime.fromtimestamp(int(ext.get("updateDate"))/1000).strftime('%Y-%m-%d %H:%M:%S')
                      _extraction_dict['7-Update Date'] = update_date
-                     
+
                      _extraction_dict['8-Active'] = ext.get("active")
                      _extraction_list.append(_extraction_dict)
 
@@ -972,11 +936,11 @@ def show_extensions_firefox(dir):
                e = str(sys.exc_info()[0])
                save_message("ERROR","Can't process file " + a + ":" + e )
 
-         
+
          if a.endswith(".sqlite") == True:
             # SQLITE
             conn = sqlite3.connect(filepath)
-            conn.text_factory = bytes   
+            conn.text_factory = bytes
             cursor = conn.cursor()
             ext_query = "select type, descriptor,version,releaseNotesURI,datetime(installDate/1000,'unixepoch','localtime'),"
             ext_query = ext_query + " datetime(UpdateDate/1000,'unixepoch','localtime'),active from addon"
@@ -1027,7 +991,7 @@ def show_search_engines(dir):
             f = open(filepath)
             jdata = json.loads(f.read())
             f.close()
-            try: 
+            try:
                _extraction_list = []
                for search_dir in jdata.get("directories"):
                   for engine in jdata.get("directories").get(search_dir).get("engines"):
@@ -1036,7 +1000,7 @@ def show_search_engines(dir):
                      _extraction_dict['1-Value'] = engine.get("description")
                      _extraction_dict['2-Hidden'] = engine.get("_hidden")
                      _extraction_list.append(_extraction_dict)
-               
+
                se_extraction_dict[filepath] = _extraction_list
 
             except TypeError:
@@ -1046,7 +1010,7 @@ def show_search_engines(dir):
          if a.endswith(".sqlite") == True:
             # SQLITE
             conn = sqlite3.connect(filepath)
-            conn.text_factory = bytes   
+            conn.text_factory = bytes
             cursor = conn.cursor()
             cursor.execute("select name, value from engine_data")
             _extraction_list = []
@@ -1055,7 +1019,7 @@ def show_search_engines(dir):
                _extraction_dict['0-Name'] = decode_reg(row[0])
                _extraction_dict['1-Value'] = str(decode_reg(row[1]))
                _extraction_list.append(_extraction_dict)
-            
+
             se_extraction_dict[filepath] = _extraction_list
 
             cursor.close()
@@ -1068,7 +1032,7 @@ def show_search_engines(dir):
       save_message("WARNING","Search Engines database not found! Please, check file" + '|'.join(se_sources))
 
 ###############################################################################################################
-### DOWNLOADS                                                                                                 # 
+### DOWNLOADS                                                                                                 #
 ###############################################################################################################
 
 def show_downloads_firefox(dir):
@@ -1081,15 +1045,15 @@ def show_downloads_firefox(dir):
       return
 
    conn = sqlite3.connect(bbdd)
-   conn.text_factory = bytes   
-   
-   if is_regexp_ok == True:
+   conn.text_factory = bytes
+
+   if args.is_regexp_ok == True:
       conn.create_function("REGEXP", 2, regexp)
-      
+
    cursor = conn.cursor()
    sqlite_query = "select name,mimeType,maxBytes/1024,source,target,referrer,tempPath, datetime(startTime/1000000,'unixepoch','localtime') as start,datetime(endTime/1000000,'unixepoch','localtime') as end,state,preferredApplication,preferredAction from moz_downloads"
    executeQuery(cursor,sqlite_query,downloads_filters)
-   
+
    _extraction_list = []
    for row in cursor:
       _extraction_dict = {}
@@ -1112,7 +1076,7 @@ def show_downloads_firefox(dir):
    total_extraction["downloads"] = downloads_extraction_dict
 
 ###############################################################################################################
-### DOWNLOADS HISTORY                                                                                         # 
+### DOWNLOADS HISTORY                                                                                         #
 ###############################################################################################################
 
 def show_downloads_history_firefox(dir):
@@ -1125,24 +1089,24 @@ def show_downloads_history_firefox(dir):
       return
 
    conn = sqlite3.connect(bbdd)
-   conn.text_factory = bytes   
-   
-   if is_regexp_ok == True:
+   conn.text_factory = bytes
+
+   if args.is_regexp_ok == True:
       conn.create_function("REGEXP", 2, regexp)
-   
+
    cursor = conn.cursor()
    sqlite_query = 'select datetime(ann.lastModified/1000000,"unixepoch","localtime") as modified, moz.url, ann.content from moz_annos ann, moz_places moz'
-   
+
    # Default filters
    #~ where moz.id=ann.place_id and ann.content not like and ann.content not like "ISO-%"  and ann.content like "file%"
    downloads_history_filters.append(["column","moz.id","ann.place_id"])
-   if is_regexp_ok:
+   if args.is_regexp_ok:
       downloads_history_filters.append(["string","ann.content","^file.*"])
    else:
       downloads_history_filters.append(["string","ann.content","file%"])
 
    executeQuery(cursor,sqlite_query,downloads_history_filters)
-   
+
    _extraction_list = []
    for row in cursor:
       _extraction_dict = {}
@@ -1150,7 +1114,7 @@ def show_downloads_history_firefox(dir):
       _extraction_dict['1-URL'] = decode_reg(row[1])
       _extraction_dict['2-Name'] = decode_reg(row[2])
       _extraction_list.append(_extraction_dict)
-   
+
    download_hist_extraction_dict[bbdd] = _extraction_list
 
    total_extraction["downloads_history"] = download_hist_extraction_dict
@@ -1170,7 +1134,7 @@ def show_downloadsdir_firefox(dir):
       return
 
    conn = sqlite3.connect(bbdd)
-   conn.text_factory = bytes   
+   conn.text_factory = bytes
    cursor = conn.cursor()
 
    # Checking if timestamp column exists
@@ -1192,21 +1156,21 @@ def show_downloadsdir_firefox(dir):
       sqlite_query = 'select value from prefs where value like "/%" group by value'
 
    cursor.execute(sqlite_query)
-   
+
    _extraction_list = []
    for row in cursor:
       _extraction_dict = {}
       _extraction_dict['0-Name'] = decode_reg(row[0])
-      
+
       if timestamp_found:
          timestamp = decode_reg(row[1])
          if regexp('^197',timestamp):
             _extraction_dict['1-Last date'] = decode_reg(row[1])
          else:
             _extraction_dict['1-Last date'] = timestamp
-      
+
       _extraction_list.append(_extraction_dict)
-   
+
    download_dir_extraction_dict[bbdd] = _extraction_list
 
    total_extraction["downloads_dir"] = download_dir_extraction_dict
@@ -1229,14 +1193,14 @@ def show_forms_firefox(dir):
 
    conn = sqlite3.connect(bbdd)
    conn.text_factory = bytes
-   
-   if is_regexp_ok == True:
+
+   if args.is_regexp_ok == True:
       conn.create_function("REGEXP", 2, regexp)
-      
+
    cursor = conn.cursor()
    sqlite_query = "select fieldname,value,timesUsed,datetime(firstUsed/1000000,'unixepoch','localtime') as last,datetime(lastUsed/1000000,'unixepoch','localtime') from moz_formhistory"
    executeQuery(cursor,sqlite_query,forms_filters)
-   
+
    _extraction_list = []
    for row in cursor:
       _extraction_dict = {}
@@ -1246,11 +1210,11 @@ def show_forms_firefox(dir):
       _extraction_dict['3-First Used'] = decode_reg(row[3])
       _extraction_dict['4-Last Used'] = decode_reg(row[4])
       _extraction_list.append(_extraction_dict)
-   
+
    forms_extraction_dict[bbdd] = _extraction_list
 
-   total_extraction["forms"] = forms_extraction_dict 
-   
+   total_extraction["forms"] = forms_extraction_dict
+
    cursor.close()
    conn.close()
 
@@ -1270,17 +1234,17 @@ def show_history_firefox(dir):
    conn = sqlite3.connect(bbdd)
    conn.text_factory = bytes
 
-   if is_regexp_ok == True:
+   if args.is_regexp_ok == True:
       conn.create_function("REGEXP", 2, regexp)
-      
+
    cursor = conn.cursor()
    sqlite_query = "select datetime(last_visit_date/1000000,'unixepoch','localtime') as last, title, url, visit_count from moz_places"
-   
-   if is_frequency_ok == False:
+
+   if args.is_frequency_ok == False:
       executeQuery(cursor,sqlite_query,history_filters,"ORDER BY last COLLATE NOCASE")
    else:
       executeQuery(cursor,sqlite_query,history_filters,"ORDER BY visit_count COLLATE NOCASE DESC")
-   
+
    _extraction_list = []
    for row in cursor:
       _extraction_dict = {}
@@ -1289,10 +1253,10 @@ def show_history_firefox(dir):
       _extraction_dict['2-URL'] = decode_reg(row[2])
       _extraction_dict['3-Frequency'] = decode_reg(row[3])
       _extraction_list.append(_extraction_dict)
-      
+
    history_extraction_dict[bbdd] = _extraction_list
 
-   total_extraction["history"] = history_extraction_dict 
+   total_extraction["history"] = history_extraction_dict
 
    cursor.close()
    conn.close()
@@ -1309,17 +1273,17 @@ def show_bookmarks_firefox(dir):
    if path.isfile(bbdd) == False:
       save_message("WARNING","Bookmarks database not found! Please, check file places.sqlite")
       return
-   
+
    conn = sqlite3.connect(bbdd)
    conn.text_factory = bytes
-   
-   if is_regexp_ok == True:
+
+   if args.is_regexp_ok == True:
       conn.create_function("REGEXP", 2, regexp)
-      
+
    cursor = conn.cursor()
    sqlite_query = 'select bm.title,pl.url,datetime(bm.dateAdded/1000000,"unixepoch","localtime"),datetime(bm.lastModified/1000000,"unixepoch","localtime") as last from moz_places pl,moz_bookmarks bm where pl.id = bm.id'
    executeQuery(cursor,sqlite_query,bookmarks_filters)
-   
+
    _extraction_list = []
    for row in cursor:
       _extraction_dict = {}
@@ -1328,10 +1292,10 @@ def show_bookmarks_firefox(dir):
       _extraction_dict['2-Creation Time'] = decode_reg(row[2])
       _extraction_dict['3-Last Modified'] = decode_reg(row[3])
       _extraction_list.append(_extraction_dict)
-      
+
    bookmarks_extraction_dict[bbdd] = _extraction_list
 
-   total_extraction["bookmarks"] = bookmarks_extraction_dict 
+   total_extraction["bookmarks"] = bookmarks_extraction_dict
 
    cursor.close()
    conn.close()
@@ -1347,7 +1311,7 @@ def show_cache(dir):
 
    # [Default, Windows 7]
    cache_abs_sources = [get_path_by_os(dir,"index.sqlite","OfflineCache")]
-   
+
    # For Windows 7 profile
    if dir.find("Roaming") > -1:
       cache_abs_sources.append(get_path_by_os(dir.replace("Roaming", "Local"),"index.sqlite","OfflineCache"))
@@ -1367,13 +1331,13 @@ def show_cache(dir):
             # SQLITE
             conn = sqlite3.connect(d)
             conn.text_factory = bytes
-            if is_regexp_ok == True:
+            if args.is_regexp_ok == True:
                conn.create_function("REGEXP", 2, regexp)
-               
+
             cursor = conn.cursor()
             sqlite_query = "select ClientID,key,DataSize,FetchCount,datetime(LastFetched/1000000,'unixepoch','localtime'),datetime(LastModified/1000000,'unixepoch','localtime') as last,datetime(ExpirationTime/1000000,'unixepoch','localtime') from moz_cache"
             executeQuery(cursor,sqlite_query,cacheoff_filters)
-            
+
             _extraction_list = []
             for row in cursor:
                _extraction_dict = {}
@@ -1386,10 +1350,10 @@ def show_cache(dir):
 
             cursor.close()
             conn.close()
-   
+
    if len(offlinecache_extraction_dict) > 0:
       # Saving extraction to main extraction list
-      total_extraction["offlinecache"] = offlinecache_extraction_dict 
+      total_extraction["offlinecache"] = offlinecache_extraction_dict
    elif cache_found == False:
       save_message("WARNING","Offline Cache database not found! Please check file OfflineCache/index.sqlite")
 
@@ -1397,7 +1361,7 @@ def show_cache(dir):
 ### OFFLINE CACHE                                                                                             #
 ###############################################################################################################
 
-def show_cache_extract(dir, directory): 
+def show_cache_extract(dir, directory):
    # TODO: include firefox-cache2-file-parser.py
    offlinecache_ext_extraction_dict = {}
    cache_found = False
@@ -1410,7 +1374,7 @@ def show_cache_extract(dir, directory):
 
    # [Default, Windows 7]
    cache_abs_sources = [get_path_by_os(dir,"OfflineCache")]
-   
+
    # For Windows 7 profile
    if dir.find("Roaming") > -1:
       cache_abs_sources.append(get_path_by_os(dir.replace("Roaming", "Local"),"OfflineCache"))
@@ -1427,27 +1391,27 @@ def show_cache_extract(dir, directory):
       if path.isdir(d) == True:
 
          cache_found = True
-         
-         if sys.platform.startswith('win') == True:         
+
+         if sys.platform.startswith('win') == True:
             # Windows systems
             for dirname, dirnames, filenames in walk(d):
                for filename in filenames:
                   _extraction_dict = {}
                   file = path.join(dirname, filename)
                   mime = magic.Magic(magic_file=magicpath)
-                  
+
                   if not path.exists(directory):
                      makedirs(directory)
-                     
+
                   if mime.from_file(file).decode('unicode-escape').startswith("gzip"):
                      if not path.exists(directory+"\\gzip"):
                         makedirs(directory+"\\gzip")
                      shutil.copy2(file, directory+"\\gzip\\"+filename+".gz")
-                     
+
                   elif mime.from_file(file).decode('unicode-escape').find("image") != -1 :
                      if not path.exists(directory+"\\images"):
                         makedirs(directory+"\\images")
-                     if mime.from_file(file).decode('unicode-escape').find("JPEG") != -1 or mime.from_file(file).decode('unicode-escape').find("jpg") != -1:      
+                     if mime.from_file(file).decode('unicode-escape').find("JPEG") != -1 or mime.from_file(file).decode('unicode-escape').find("jpg") != -1:
                         shutil.copy2(file, directory+"\\images\\"+filename+".jpg")
                      elif mime.from_file(file).decode('unicode-escape').find("GIF") != -1:
                         shutil.copy2(file, directory+"\\images\\"+filename+".gif")
@@ -1464,12 +1428,12 @@ def show_cache_extract(dir, directory):
                      if not path.exists(directory+"\\text"):
                         makedirs(directory+"\\text")
                      shutil.copy2(file, directory+"\\text\\"+filename+".txt")
-                  
+
                   else:
                      if not path.exists(directory+"\\others"):
                         makedirs(directory+"\\others")
                      shutil.copy2(file, directory+"\\others\\"+filename)
-                  
+
                   if filename != "index.sqlite":
                      count_alpha = str(count).zfill(6)
                      _extraction_dict = {count_alpha + "-Copying "+filename : mime.from_file(file).decode('unicode-escape')}
@@ -1478,13 +1442,13 @@ def show_cache_extract(dir, directory):
                      _extraction_list.append(_extraction_dict)
 
                   count = count + 1
-            
+
             try:
                remove(directory+"\\index.sqlite")
             except:
                save_message("WARNING","Failed to remove index.sqlite from "+directory)
 
-         else: 
+         else:
             # Unix systems
             for dirname, dirnames, filenames in walk(d):
                for filename in filenames:
@@ -1497,11 +1461,11 @@ def show_cache_extract(dir, directory):
                      if not path.exists(directory+"/gzip/"):
                         makedirs(directory+"/gzip/")
                      shutil.copy2(file, directory+"/gzip/"+filename+".gz")
-                  
+
                   elif mime.from_file(file).decode('unicode-escape').startswith("image"):
                      if not path.exists(directory+"/images/"):
                         makedirs(directory+"/images/")
-                     if mime.from_file(file).decode('unicode-escape').find("jpeg") != -1 or mime.from_file(file).decode('unicode-escape').find("jpg") != -1:      
+                     if mime.from_file(file).decode('unicode-escape').find("jpeg") != -1 or mime.from_file(file).decode('unicode-escape').find("jpg") != -1:
                         shutil.copy2(file, directory+"/images/"+filename+".jpg")
                      elif mime.from_file(file).decode('unicode-escape').find("gif") != -1:
                         shutil.copy2(file, directory+"/images/"+filename+".gif")
@@ -1523,7 +1487,7 @@ def show_cache_extract(dir, directory):
                      if not path.exists(directory+"/others/"):
                         makedirs(directory+"/others/")
                      shutil.copy2(file, directory+"/others/"+filename)
-                  
+
                   if filename != "index.sqlite":
                      count_alpha = str(count).zfill(6)
                      _extraction_dict = {count_alpha + "-Copying "+filename : mime.from_file(file).decode('unicode-escape')}
@@ -1551,7 +1515,7 @@ def show_thumbnails(dir, directory = "null"):
 
    # [Default, Windows 7]
    thumbnails_sources = [get_path_by_os(dir,"thumbnails")]
-      
+
    # For Windows 7 profile
    if dir.find("Roaming") > -1:
       thumbnails_sources.append(get_path_by_os(dir.replace("Roaming", "Local"),"thumbnails"))
@@ -1563,7 +1527,7 @@ def show_thumbnails(dir, directory = "null"):
    for d in thumbnails_sources:
       if path.exists(d):
          thumbnails_found = True
-        
+
          _extraction_list = []
          for dirname, dirnames, filenames in walk(d):
             for filename in filenames:
@@ -1572,7 +1536,7 @@ def show_thumbnails(dir, directory = "null"):
                     nfile = get_path_by_os(dirname, filename)
                     _extraction_dict['0-File'] = nfile
                else:
-                    nfile = get_path_by_os(dirname, filename)     
+                    nfile = get_path_by_os(dirname, filename)
                     if not path.exists(directory):
                        makedirs(directory)
                     shutil.copy2(nfile, directory)
@@ -1599,7 +1563,7 @@ def show_cert_override(dir):
 
    if path.isfile(bbdd):
       lineas = open(bbdd).readlines()
-      
+
       nl = 0
       _extraction_list = []
       for certificado in lineas:
@@ -1607,7 +1571,7 @@ def show_cert_override(dir):
             _extraction_dict = {}
             _extraction_dict["0-Site"] = lineas[nl].split()[0]
             _extraction_dict["1-Hash Algorithm"] = lineas[nl].split()[1]
-            _extraction_dict["2-Data"] = lineas[nl].split()[2] 
+            _extraction_dict["2-Data"] = lineas[nl].split()[2]
             _extraction_list.append(_extraction_dict)
          nl = nl + 1
 
@@ -1623,19 +1587,25 @@ def show_cert_override(dir):
 ###############################################################################################################
 
 def show_watch(dir,watch_text = 1):
+   sw_py_path = PYTHON3_PATH
    if sys.platform.startswith('win') == True:
       save_message("ERROR","--Watch option not supported on Windows!")
       return
-   elif python3_path == "":
-      save_message("ERROR","Edit the header of dumpzilla.py and add Python3 path into variable named 'python3_path' or use -py3path option to set it.")
-      sys.exit()
+   elif sw_py_path == '':
+      sw_py_path = input('Python 3 path (Press Enter for default - ' + PYTHON3_DEF + '): ').strip() # Python 3.x path (NO Windows). Example: /usr/bin/python3.4
+      if sw_py_path == '':
+        sw_py_path = PYTHON3_DEF
+
+   if not path.isfile(sw_py_path):
+       save_message("ERROR","Python path '" + sw_py_path + "' is not a valid file path.")
+       sys.exit(1)
 
    elif watch_text == 1:
-      cmd = ["watch", "-n", "4",python3_path, path.abspath(__file__), dir, "--Session2"]
+      cmd = ["watch", "-n", "4",sw_py_path, path.abspath(__file__), dir, "--Live"]
       call(cmd)
    else:
-      cmd = ["watch", "-n", "4",python3_path, path.abspath(__file__), dir, "--Session2", "| grep --group-separator '' -A 2 -B 2 -i", "'"+watch_text+"'" ]
-      call(cmd)   
+      cmd = ["watch", "-n", "4",sw_py_path, path.abspath(__file__), dir, "--Live", "| grep --group-separator '' -A 2 -B 2 -i", "'"+watch_text+"'" ]
+      call(cmd)
 
 def get_param_argurment(arg, num):
    rparam = ""
@@ -1659,7 +1629,7 @@ def show_session(dir):
       # Adding new source
       if path.isfile(path.join(dir,s)) and s.startswith("sessionstore") and s not in session_sources:
          session_sources.append(s)
-   
+
    # Checking for more backup session sources (II)
    session_folder = path.join(dir,"sessionstore-backups")
    if path.isdir(session_folder):
@@ -1670,7 +1640,7 @@ def show_session(dir):
 
    # Extraction
    for a in session_sources:
-      bbdd = os.path.join(dir,a) 
+      bbdd = os.path.join(dir,a)
       # Checking source file
       if path.isfile(bbdd) == True:
          session_found = True
@@ -1684,7 +1654,7 @@ def show_session(dir):
          f.close()
 
          _extraction_list = extract_data_session(jdata,filesession,hashsession,bbdd)
-         
+
          session_extraction_dict[bbdd] = _extraction_list
 
    if len(session_extraction_dict) > 0:
@@ -1711,16 +1681,16 @@ def extract_data_session(jdata,filesession,hashsession,namesession):
          _extraction_dict["00-Session type"] = tipo
          _extraction_dict["01-Last update"] = str(time.ctime(jdata["session"]["lastUpdate"]/1000.0))
          _extraction_dict["02-Type"] = "Default"
-         
+
          if tab.get("index") is not None:
             i = tab.get("index") - 1
-         
+
          _extraction_dict["03-Title"] = tab.get("entries")[i].get("title")
          _extraction_dict["04-URL"] = tab.get("entries")[i].get("url")
 
          if tab.get("entries")[i].get("referrer") is not None:
             _extraction_dict["05-Referrer"] = tab.get("entries")[i].get("referrer")
-         
+
          if tab.get("entries")[i].get("formdata") is not None and str(tab.get("entries")[i].get("formdata")) != "{}" :
             if str(tab.get("entries")[i].get("formdata").get("xpath")) == "{}" and str(tab.get("entries")[i].get("formdata").get("id")) != "{}":
                _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata").get("id")
@@ -1728,9 +1698,9 @@ def extract_data_session(jdata,filesession,hashsession,namesession):
                _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata").get("xpath")
             else:
                _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata")
-         
-         _extraction_list.append(_extraction_dict)   
-         
+
+         _extraction_list.append(_extraction_dict)
+
       # Closed tabs
       if win.get("_closedTabs") is not None and len(win.get("_closedTabs")) > 0:
          for closed_tab in win.get("_closedTabs")[0].get("state").get("entries"):
@@ -1740,7 +1710,7 @@ def extract_data_session(jdata,filesession,hashsession,namesession):
             _extraction_dict["09-Type"] = "Closed tab"
             _extraction_dict["10-Title"] = closed_tab.get("title")
             _extraction_dict["11-URL"] = closed_tab.get("url")
-            _extraction_list.append(_extraction_dict)  
+            _extraction_list.append(_extraction_dict)
 
    return _extraction_list
 
@@ -1763,11 +1733,11 @@ def extract_data_session_watch (dir):
          # Adding new source
          if path.isfile(path.join(session_watch_folder,s)):
             session_watch_sources.append(path.join("sessionstore-backups",s))
-   
+
    higher_date = 0
    higher_source = ""
    for a in session_watch_sources:
-      bbdd = os.path.join(dir,a) 
+      bbdd = os.path.join(dir,a)
       # Checking source file
       if path.isfile(bbdd) == True:
          session_watch_found = True
@@ -1777,7 +1747,7 @@ def extract_data_session_watch (dir):
          if jdata["session"]["lastUpdate"] > higher_date:
             higher_date=jdata["session"]["lastUpdate"]
             higher_source=bbdd
-   
+
    # Showing last updated session data
    if session_watch_found == True:
       f = open(higher_source)
@@ -1785,12 +1755,12 @@ def extract_data_session_watch (dir):
       jdata = json.loads(f.read())
       f.close()
       count = 0
-      countform = 0      
+      countform = 0
       for win in jdata.get("windows"):
          for tab in win.get("tabs"):
             if tab.get("index") is not None:
                i = tab.get("index") - 1
-            print ("Title: %s" % tab.get("entries")[i].get("title"))
+            print ("\nTitle: %s" % tab.get("entries")[i].get("title"))
             print ("URL: %s" % tab.get("entries")[i].get("url"))
             if tab.get("entries")[i].get("formdata") is not None and str(tab.get("entries")[i].get("formdata")) != "{}" :
                countform = countform + 1
@@ -1800,9 +1770,8 @@ def extract_data_session_watch (dir):
                   print ("Form: %s\n" % tab.get("entries")[i].get("formdata").get("xpath"))
                else:
                   print ("Form: %s\n" % tab.get("entries")[i].get("formdata"))
-            print ("\n")
             count = count + 1
-      print ("[INFO] Last update: %s " % time.ctime(jdata["session"]["lastUpdate"]/1000.0))
+      print ("\n[INFO] Last update: %s " % time.ctime(jdata["session"]["lastUpdate"]/1000.0))
       print ("[INFO] Number of windows / tabs in use: %s" % count)
       print ("[INFO] Number of webs with forms in use: %s" % countform)
       print ("[INFO] Exit: Ctrl + C")
@@ -1835,9 +1804,8 @@ Options:
  --Session
  --RegExp (uses Regular Expresions for string type filters instead of Wildcards)
  --Summary (only shows debug messages and summary report)
- --Watch [-text <string>] [-py3path <string>] (Shows in daemon mode the URLs and text form in real time)
+ --Watch [-text <string>](Shows in daemon mode the URLs and text form in real time)
          (-text Option allow filter, supports all grep Wildcards. Exit: Ctrl + C. only Unix)
-          -py3path Option to set Python3 path instead off add the python3 path to the variable 'python3_path')
 
 Wildcards: '%'  Any string of any length (Including zero length)
            '_'  Single character
@@ -1845,7 +1813,7 @@ Wildcards: '%'  Any string of any length (Including zero length)
 
 Date syntax: YYYY-MM-DD hh:mi:ss (Wildcards allowed)
 
-Profile:       
+Profile:
    WinXP profile -> 'C:\\Documents and Settings\\xx\\Application Data\\Mozilla\\Firefox\\Profiles\\xxxx.default'
    Win7 profile  -> 'C:\\Users\\xx\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\xxxx.default'
    Unix profile  -> '/home/xx/.mozilla/firefox/xxxx.default/'\n""")
@@ -1856,45 +1824,42 @@ Profile:
 ### MAIN                                                                                                      #
 ##                                                                                                            #
 ###############################################################################################################
-if path.isfile(python3_path) == False: 
-    save_message("ERROR","Python path '" + python3_path + "' is not a valid file path.")
-
 if len(sys.argv) == 1:
-      save_message("ERROR","Missing parameters...")
-      show_help()
+    save_message("ERROR","Missing parameters...")
+    show_help()
 else:
     parser = argparse.ArgumentParser()
     parser.add_argument('filename')
 
-    
-      
+
+
       ###############
-      ### ARG PARSER      
+      ### ARG PARSER
       ###############
-      
-      
-    parser.add_argument("--All", action="store_true", default=False,  dest='is_showall_ok', 
+
+
+    parser.add_argument("--All", action="store_true", default=False,  dest='is_showall_ok',
                     help="(shows everything but the DOM data. Doesn't extract thumbnails or HTML 5 offline)")
-    parser.add_argument("--RegExp", action="store_true", default=False,  dest='is_regexp_ok', 
+    parser.add_argument("--RegExp", action="store_true", default=False,  dest='is_regexp_ok',
                     help="(uses Regular Expresions for string type filters instead of Wildcards)")
-    parser.add_argument("--Summary", action="store_true", default=False,  dest='is_summary_ok', 
+    parser.add_argument("--Summary", action="store_true", default=False,  dest='is_summary_ok',
                     help="(only shows debug messages and summary report)")
     #...........................................
     #... Cookie parameters
-    #...........................................        
-    parser.add_argument("--Cookies", action="store_true", default=False,  dest='is_cookie_ok',       
-          help="--Cookies [-showdom -domain <string> -name <string> -hostcookie <string> -access <date> -create <date> -secure <0/1> -httponly <0/1> -last_range <start> <end> -create_range <start> <end>]")  
+    #...........................................
+    parser.add_argument("--Cookies", action="store_true", default=False,  dest='is_cookie_ok',
+          help="--Cookies [-showdom -domain <string> -name <string> -hostcookie <string> -access <date> -create <date> -secure <0/1> -httponly <0/1> -last_range <start> <end> -create_range <start> <end>]")
     parser.add_argument("-showdom", action="store_true",
               help="[-showdom]")
     parser.add_argument("-domain", nargs=1,
               help="[-domain <string>]")
-    parser.add_argument("-name", nargs=1, 
+    parser.add_argument("-name", nargs=1,
               help="[-name <string>]")
-    parser.add_argument("-hostcookie", nargs=1, 
+    parser.add_argument("-hostcookie", nargs=1,
               help="[-hostcookie <string>]")
-    parser.add_argument("-access", nargs=1, 
+    parser.add_argument("-access", nargs=1,
               help="[-access <date>]")
-    parser.add_argument("-create", nargs=1, 
+    parser.add_argument("-create", nargs=1,
               help="[-create <date>]")
     parser.add_argument("-secure", nargs=1, type=int,
               help="[-secure <0/1>]")
@@ -1902,131 +1867,129 @@ else:
               help="[-httponly <0/1>]")
     parser.add_argument("-last_range", nargs=2,
               help="[-last_range <start> <end>]")
-    parser.add_argument("-create_range", nargs=2, 
+    parser.add_argument("-create_range", nargs=2,
               help="[-create_range <start> <end>]")
     #...........................................
     #... Permissions parameters
-    #...........................................      
-    parser.add_argument("--Permissions", action="store_true", default=False,  dest='is_permissions_ok', 
-              help="--Permissions [-host <string> -type <string>  -modif <date> -modif_range <start> <end>]")   
-    parser.add_argument("-host", nargs=1,   
-              help="[-host <string>")   
+    #...........................................
+    parser.add_argument("--Permissions", action="store_true", default=False,  dest='is_permissions_ok',
+              help="--Permissions [-host <string> -type <string>  -modif <date> -modif_range <start> <end>]")
+    parser.add_argument("-host", nargs=1,
+              help="[-host <string>")
     parser.add_argument("-type", nargs=1,
-              help="[-type <string>]")   
-    parser.add_argument("-modif", nargs=1, 
-              help="[-modif <date>")   
+              help="[-type <string>]")
+    parser.add_argument("-modif", nargs=1,
+              help="[-modif <date>")
     parser.add_argument("-modif_range", nargs=2,
-            help="[-modif_range <start> <end>]")  
+            help="[-modif_range <start> <end>]")
     #...........................................
     #... Preferences parameters
     #...........................................
-    parser.add_argument("--Preferences", action="store_true", default=False,  dest='is_preferences_ok', 
-              help="")  
-    #...........................................
-    #... Addons parameters                                                                                                  
-    #...........................................
-    parser.add_argument("--Addons", action="store_true", default=False,  dest='is_addon_ok', 
+    parser.add_argument("--Preferences", action="store_true", default=False,  dest='is_preferences_ok',
               help="")
     #...........................................
-    #... Downloads parameters                                                                                                 
+    #... Addons parameters
     #...........................................
-    parser.add_argument("--Downloads", action="store_true", default=False,  dest='is_downloads_ok', 
+    parser.add_argument("--Addons", action="store_true", default=False,  dest='is_addon_ok',
+              help="")
+    #...........................................
+    #... Downloads parameters
+    #...........................................
+    parser.add_argument("--Downloads", action="store_true", default=False,  dest='is_downloads_ok',
               help="--Downloads [-range <start> <end>]")
     parser.add_argument("-range", nargs=2,
-              help="[-range <start> <end>]")   
+              help="[-range <start> <end>]")
     #...........................................
-    #... Forms parameters                                                                                                 
+    #... Forms parameters
     #...........................................
-    parser.add_argument("--Forms", action="store_true", default=False,  dest='is_forms_ok', 
+    parser.add_argument("--Forms", action="store_true", default=False,  dest='is_forms_ok',
               help="--Forms [-value <string> -forms_range <start> <end>]")
     parser.add_argument("-value", nargs=1,
-              help="[-value <string>]")  
+              help="[-value <string>]")
     parser.add_argument("-forms_range", nargs=2,
-              help="[-forms_range <start> <end>]") 
+              help="[-forms_range <start> <end>]")
     #...........................................
     #... History parameters
-    #...........................................      
-    parser.add_argument("--History", action="store_true", default=False,  dest='is_history_ok', 
-              help="--History [-url <string> -title <string> -date <date> -history_range <start> <end> -frequency]")   
+    #...........................................
+    parser.add_argument("--History", action="store_true", default=False,  dest='is_history_ok',
+              help="--History [-url <string> -title <string> -date <date> -history_range <start> <end> -frequency]")
     parser.add_argument("-url", nargs=1,
-              help="[-url <string>]")   
+              help="[-url <string>]")
     parser.add_argument("-frequency", action="store_true", default=False,  dest='is_frequency_ok',
-              help="[-frequency]")   
-    parser.add_argument("-title", nargs=1, 
-              help="[-title <string>]")   
+              help="[-frequency]")
+    parser.add_argument("-title", nargs=1,
+              help="[-title <string>]")
     parser.add_argument("-date", nargs=1,
-              help="[-date <date>]")   
+              help="[-date <date>]")
     parser.add_argument("-history_range", nargs=2,
-              help="[-history_range <start> <end>]")   
+              help="[-history_range <start> <end>]")
     #...........................................
-    #... Bookmarks parameters                                                                                                 
+    #... Bookmarks parameters
     #...........................................
-    parser.add_argument("--Bookmarks", action="store_true", default=False,  dest='is_bookmarks_ok', 
+    parser.add_argument("--Bookmarks", action="store_true", default=False,  dest='is_bookmarks_ok',
               help="--Bookmarks [-bookmarks_range <start> <end>]")
     parser.add_argument("-bookmarks_range", nargs=2,
-              help="[-bookmarks_range <start> <end>]")                           
+              help="[-bookmarks_range <start> <end>]")
     #...........................................
-    #... Passwords parameters                                                                                                 
+    #... Passwords parameters
     #...........................................
-    parser.add_argument("--Passwords", action="store_true", default=False,  dest='is_passwords_ok', 
+    parser.add_argument("--Passwords", action="store_true", default=False,  dest='is_passwords_ok',
               help="(decode only in Unix)")
     #...........................................
-    #... Cache parameters                                                                                                 
+    #... Cache parameters
     #...........................................
-    parser.add_argument("--OfflineCache", action="store_true", default=False,  dest='is_cacheoff_ok', 
-              help="--OfflineCache [-cache_range <start> <end> -extract <directory>]") 
-    parser.add_argument("-cache_range", nargs=2, 
-              help="[-cache_range <start> <end>]") 
-    parser.add_argument("-extract", nargs=1, 
-              help="[-extract <directory>]") 
+    parser.add_argument("--OfflineCache", action="store_true", default=False,  dest='is_cacheoff_ok',
+              help="--OfflineCache [-cache_range <start> <end> -extract <directory>]")
+    parser.add_argument("-cache_range", nargs=2,
+              help="[-cache_range <start> <end>]")
+    parser.add_argument("-extract", nargs=1,
+              help="[-extract <directory>]")
     #...........................................
-    #... Certoverride parameters                                                                                                 
+    #... Certoverride parameters
     #...........................................
-    parser.add_argument("--Certoverride", action="store_true", default=False,  dest='is_cert_ok', 
+    parser.add_argument("--Certoverride", action="store_true", default=False,  dest='is_cert_ok',
               help="")
     #...........................................
-    #... Thumbnails parameters                                                                                                 
+    #... Thumbnails parameters
     #...........................................
-    parser.add_argument("--Thumbnails", action="store_true", default=False,  dest='is_thump_ok', 
+    parser.add_argument("--Thumbnails", action="store_true", default=False,  dest='is_thump_ok',
               help="--Thumbnails [-extract_thumb <directory>]")
     parser.add_argument("-extract_thumb", nargs=1,
-              help="[-extract_thumb <directory>]") 
+              help="[-extract_thumb <directory>]")
     #...........................................
-    #... Session parameters                                                                                                 
+    #... Session parameters
     #...........................................
-    parser.add_argument("--Session", action="store_true", default=False,  dest='is_session_ok', 
+    parser.add_argument("--Session", action="store_true", default=False,  dest='is_session_ok',
               help="")
     #...........................................
-    #... Session2 parameters                                                                                                 
+    #... Live session parameters (watch)
     #...........................................
-    parser.add_argument("--Session2", action="store_true", default=False,  dest='is_session2_ok', 
+    parser.add_argument("--Live", action="store_true", default=False,  dest='is_live_ok',
               help="")
     #...........................................
-    #... Watch parameters                                                                                                 
+    #... Watch parameters
     #...........................................
-    parser.add_argument("--Watch", action="store_true", default=False,  dest='is_watch_ok', 
-              help="--Watch  [-text <string>] [-py3path <string>] (Shows in daemon mode the URLs and text form in real time)")
-    parser.add_argument("-py3path", nargs=1,
-              help="[-py3path <string>] (Option to set Python3 path instead off add the python3 path to the variable 'python3_path')")                 
+    parser.add_argument("--Watch", action="store_true", default=False,  dest='is_watch_ok',
+              help="--Watch  [-text <string>] (Shows in daemon mode the URLs and text form in real time)")
     parser.add_argument("-text", nargs=1,
               help="[-text <string>] (-text Option allow filter, supports all grep Wildcards. Exit: Ctrl + C. only Unix)")
 
-    
+
     args = parser.parse_args()
-     
+
      #...........................................
      #...........................................
     dir = format(args.filename)
-    
+
     if path.isdir(dir) and len(sys.argv) == 2:
         save_message("ERROR","Missing parameters...")
         show_help()
 
     elif path.isdir(dir) and len(sys.argv) > 2:
-      
+
         dir = path.abspath(dir)
         save_message("INFO","Profile Path: " + dir)
-    
+
         if args.is_cookie_ok:
              if args.showdom:
                  is_dom_ok = True
@@ -2042,60 +2005,60 @@ else:
                  cookie_filters.append(["string","host",cookie_host])
              if args.access:
                  cookie_access_date = validateDate(format(args.access))
-                 cookie_filters.append(["date","last",cookie_access_date]) 
+                 cookie_filters.append(["date","last",cookie_access_date])
              if args.create:
                  cookie_create_date = validateDate(format(args.create))
-                 cookie_filters.append(["date","creat",cookie_create_date]) 
+                 cookie_filters.append(["date","creat",cookie_create_date])
              if args.secure:
                  cookie_secure = format(args.secure)
-                 cookie_filters.append(["number","isSecure",cookie_secure]) 
+                 cookie_filters.append(["number","isSecure",cookie_secure])
              if args.httponly:
                  cookie_httponly = format(args.httponly)
-                 cookie_filters.append(["number","isHttpOnly",cookie_httponly]) 
+                 cookie_filters.append(["number","isHttpOnly",cookie_httponly])
              if args.last_range:
                  cookie_access_range1 = validateDate(format(args.last_range[0]))
                  cookie_access_range2 = validateDate(format(args.last_range[1]))
-                 cookie_filters.append(["range","last",[cookie_access_range1,cookie_access_range2]]) 
+                 cookie_filters.append(["range","last",[cookie_access_range1,cookie_access_range2]])
              if args.create_range:
                  cookie_create_range1 = validateDate(format(args.create_range[0]))
                  cookie_create_range2 = validateDate(format(args.create_range[1]))
-                 cookie_filters.append(["range","creat",[cookie_create_range1,cookie_create_range2]]) 
-         
-         
+                 cookie_filters.append(["range","creat",[cookie_create_range1,cookie_create_range2]])
+
+
         if args.is_permissions_ok:
              if args.host:
                  permissions_host = format(args.host)
-                 permissions_filters.append(["string","host",permissions_host]) 
+                 permissions_filters.append(["string","host",permissions_host])
              if args.type:
                  permissions_type = format(args.type)
-                 permissions_filters.append(["string","type",permissions_type]) 
+                 permissions_filters.append(["string","type",permissions_type])
              if args.modif:
                  permissions_modif_date = validateDate(format(args.modif))
-                 permissions_filters.append(["date","modif",permissions_modif_date]) 
+                 permissions_filters.append(["date","modif",permissions_modif_date])
              if args.modif_range:
                  permissions_modif_range1 = validateDate(format(args.modif_range[0]))
                  permissions_modif_range2 = validateDate(format(args.modif_range[1]))
-                 permissions_filters.append(["range","modif",[permissions_modif_range1,permissions_modif_range2]]) 
-                
-              
+                 permissions_filters.append(["range","modif",[permissions_modif_range1,permissions_modif_range2]])
+
+
         if args.is_downloads_ok:
              if args.range:
                  downloads_range1 = validateDate(format(args.range[0]))
                  downloads_range2 = validateDate(format(args.range[1]))
-                 downloads_filters.append(["range","start",[downloads_range1,downloads_range2]]) 
-                 downloads_history_filters.append(["range","modified",[downloads_range1,downloads_range2]]) 
-    
-    
+                 downloads_filters.append(["range","start",[downloads_range1,downloads_range2]])
+                 downloads_history_filters.append(["range","modified",[downloads_range1,downloads_range2]])
+
+
         if args.is_forms_ok:
              if args.value:
                  forms_value = format(args.value)
-                 forms_filters.append(["string","value",forms_value])   
+                 forms_filters.append(["string","value",forms_value])
              if args.forms_range:
                  forms_range1 = validateDate(format(args.forms_range[0]))
                  forms_range2 = validateDate(format(args.forms_range[1]))
-                 forms_filters.append(["range","last",[forms_range1,forms_range2]]) 
-    
-    
+                 forms_filters.append(["range","last",[forms_range1,forms_range2]])
+
+
         if args.is_history_ok:
              if args.url:
                  history_url =  format(args.url)
@@ -2110,15 +2073,15 @@ else:
                  history_range1 = validateDate(format(args.history_range[0]))
                  history_range2 = validateDate(format(args.history_range[1]))
                  history_filters.append(["range","last",[history_range1,history_range2]])
-    
-    
+
+
         if args.is_bookmarks_ok:
              if args.bookmarks_range:
                  bookmarks_range1 = validateDate(format(args.bookmarks_range[0]))
                  bookmarks_range2 = validateDate(format(args.bookmarks_range[1]))
                  bookmarks_filters.append(["range","last",[bookmarks_range1,bookmarks_range2]])
-    
-    
+
+
         if args.is_cacheoff_ok:
              if args.cache_range:
                  cacheoff_range1 = format(args.cache_range[0])
@@ -2127,36 +2090,34 @@ else:
              if args.extract:
                  is_cacheoff_extract_ok = True
                  cacheoff_directory = format(args.extract)
-    
-    
+
+
         if args.is_thump_ok:
              if args.extract_thumb:
                  thumb_directory = format(args.extract_thumb)
-    
-    
+
+
         if args.is_watch_ok:
-             if args.py3path:
-                 python3_path = format(args.py3path)
              if args.text:
                  watch_text = format(args.text)
-    
-          
+
+
         if len(vars(args)) == 0:
             show_help()
             sys.exit()
-    
+
           ###############
-          ### ACTIONS      
+          ### ACTIONS
           ###############
         show_info_header(dir)
-          
+
         if args.is_regexp_ok:
              query_str_f = "REGEXP"
              query_str_a = ""
         else:
              query_str_f = "like"
              query_str_a = "escape '\\'"
-          
+
         if args.is_showall_ok:
              save_message("INFO","All parameters")
              All_execute(dir)
@@ -2192,12 +2153,12 @@ else:
                 show_bookmarks_firefox(dir)
                 anyexec = True
              if args.is_passwords_ok:
-                show_passwords_firefox(dir)   
+                show_passwords_firefox(dir)
                 anyexec = True
              if args.is_cacheoff_ok:
                 show_cache(dir)
                 anyexec = True
-             if args.is_cacheoff_ok and is_cacheoff_extract_ok: 
+             if args.is_cacheoff_ok and is_cacheoff_extract_ok:
                 show_cache_extract(dir, cacheoff_directory)
                 anyexec = True
              if args.is_cert_ok:
@@ -2209,7 +2170,7 @@ else:
              if args.is_session_ok:
                 show_session(dir)
                 anyexec = True
-             if args.is_session2_ok:
+             if args.is_live_ok:
                 extract_data_session_watch(dir)
                 anyexec = True
              if args.is_watch_ok:
@@ -2217,87 +2178,86 @@ else:
                 anyexec = True
              if args.is_summary_ok and not anyexec:
                 All_execute(dir)
-    
-          ###############
-          ### SUMMARY      
-          ###############
-    
-        if args.is_regexp_ok == True:
-             save_message("INFO","Using Regular Expression mode for string type filters")
-    
-          ### HEADERS
-        titles = {
-           "decode"              : "Decode Passwords     ",
-           "passwords"           : "Passwords            ",
-           "exceptions"          : "Exceptions/Passwords ",
-           "cookies"             : "Cookies              ",
-           "dom"                 : "DOM Storage          ",
-           "permissions"         : "Permissions          ",
-           "preferences"         : "Preferences          ",
-           "addons"              : "Addons               ",
-           "addinfo"             : "Addons (URLS/PATHS)  ",
-           "extensions"          : "Extensions           ",
-           "engines"             : "Search Engines       ",
-           "downloads"           : "Downloads            ",
-           "downloads_history"   : "Downloads history    ",
-           "downloads_dir"       : "Directories          ",
-           "forms"               : "Forms                ",
-           "history"             : "History              ",
-           "bookmarks"           : "Bookmarks            ",
-           "offlinecache"        : "OfflineCache Html5   ",
-           "offlinecache_extract": "OfflineCache Extract ",
-           "thumbnails"          : "Thumbnails images    ",
-           "cert_override"       : "Cert override        ",
-           "session"             : "Sessions             "
-        }
-    
-        info_headers = sorted(total_extraction.keys())
-        summary = {}
-    
-        for header in info_headers:
-             sources = total_extraction[header].keys()
-             for source in sources:
-                # INFO HEADER BY SOURCE
-                if not is_summary_ok:
-                   if path.isfile(source):
-                      show_title(titles[header] +show_sha256(source), 302)
-                   else:
-                      show_title(titles[header], 243)
-    
-                if header in summary.keys():
-                   summary[header] = summary[header] + len(total_extraction[header][source])
-                else:
-                   summary[header] = len(total_extraction[header][source])
-    
-                if summary[header] > 0:
-                   for i in total_extraction[header][source]:
-                      tags = sorted(i.keys())
-                      for tag in tags:
-                         if not is_summary_ok:
-                            if i[tag]:
-                               print(tag.split('-',1)[1] + ": " + str(i[tag]))
-                            else:
-                               print(tag.split('-',1)[1] + ": ")
-                      if not is_summary_ok:
-                         print("")
-                else:
-                   if not is_summary_ok:
-                      print("No data found!")
-                   summary[header] = 0
-    
-        info_headers = sorted(summary.keys())
-    
-        if len(info_headers) == 0 and arg_count > 0:
-             show_title("Total Information", 243)
-             print("No data found!")
-        elif len(info_headers) == 0:
-             save_message("ERROR","Missing argument!")
-             show_help()
-        else:
-             show_title("Total Information", 243)
-             for header in info_headers:
-                print("Total " + titles[header] + ": " + str(summary[header]))
-        print("")
+
+        ###############
+        ### SUMMARY
+        ###############
+        if not args.is_live_ok:
+            if args.is_regexp_ok == True:
+                save_message("INFO","Using Regular Expression mode for string type filters")
+
+              ### HEADERS
+            titles = {
+               "decode"              : "Decode Passwords     ",
+               "passwords"           : "Passwords            ",
+               "exceptions"          : "Exceptions/Passwords ",
+               "cookies"             : "Cookies              ",
+               "dom"                 : "DOM Storage          ",
+               "permissions"         : "Permissions          ",
+               "preferences"         : "Preferences          ",
+               "addons"              : "Addons               ",
+               "addinfo"             : "Addons (URLS/PATHS)  ",
+               "extensions"          : "Extensions           ",
+               "engines"             : "Search Engines       ",
+               "downloads"           : "Downloads            ",
+               "downloads_history"   : "Downloads history    ",
+               "downloads_dir"       : "Directories          ",
+               "forms"               : "Forms                ",
+               "history"             : "History              ",
+               "bookmarks"           : "Bookmarks            ",
+               "offlinecache"        : "OfflineCache Html5   ",
+               "offlinecache_extract": "OfflineCache Extract ",
+               "thumbnails"          : "Thumbnails images    ",
+               "cert_override"       : "Cert override        ",
+               "session"             : "Sessions             "
+            }
+
+            info_headers = sorted(total_extraction.keys())
+            summary = {}
+            for header in info_headers:
+                 sources = total_extraction[header].keys()
+                 for source in sources:
+                    # INFO HEADER BY SOURCE
+                    if not args.is_summary_ok:
+                       if path.isfile(source):
+                          show_title(titles[header] +show_sha256(source), 302)
+                       else:
+                          show_title(titles[header], 243)
+
+                    if header in summary.keys():
+                       summary[header] = summary[header] + len(total_extraction[header][source])
+                    else:
+                       summary[header] = len(total_extraction[header][source])
+
+                    if summary[header] > 0:
+                       for i in total_extraction[header][source]:
+                          tags = sorted(i.keys())
+                          for tag in tags:
+                             if not args.is_summary_ok:
+                                if i[tag]:
+                                   print(tag.split('-',1)[1] + ": " + str(i[tag]))
+                                else:
+                                   print(tag.split('-',1)[1] + ": ")
+                          if not args.is_summary_ok:
+                             print("")
+                    else:
+                       if not args.is_summary_ok:
+                          print("No data found!")
+                       summary[header] = 0
+
+            info_headers = sorted(summary.keys())
+
+            if len(info_headers) == 0 and arg_count > 0:
+                 show_title("Total Information", 243)
+                 print("No data found!")
+            elif len(info_headers) == 0:
+                 save_message("ERROR","Missing argument!")
+                 show_help()
+            else:
+                 show_title("Total Information", 243)
+                 for header in info_headers:
+                    print("Total " + titles[header] + ": " + str(summary[header]))
+            print("")
 
     else:
       save_message("ERROR","Failed to read profile directory: " + dir)
