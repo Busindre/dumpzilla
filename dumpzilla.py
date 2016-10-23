@@ -167,12 +167,18 @@ class Dumpzilla():
             # guess false in case of error
             return False
 
-    def printout(self, text, colour=WHITE):
+    def color_printout(self, text, colour=WHITE):
         if self.has_colours:
                 seq = "\x1b[1;%dm" % (30+colour) + text + "\x1b[0m"
                 sys.stdout.write(seq)
         else:
                 sys.stdout.write(text)
+
+    def get_user_value(self, message):
+        if sys.version.startswith('2.') == True:
+            return raw_input(message);
+        else:
+            return input(message);
 
     def get_path_by_os(self, dir, file, cd_dir = None):
        delimiter = "/"
@@ -202,7 +208,7 @@ class Dumpzilla():
             colour = self.RED;
         elif _type == "WARNING":
             colour = self.YELLOW;
-        self.printout("[" + _type + "] ",colour)
+        self.color_printout("[" + _type + "] ",colour)
         print(_text )
         self.message_list.append([_type,_text])
 
@@ -230,12 +236,12 @@ class Dumpzilla():
           self.save_message("ERROR", "Error using RegExp " + e)
           return None
 
-    def validateDate(self,date_str):
+    def validate_date(self,date_str):
        if not self.regexp('^[0-9_%:\- ]{1,19}$',date_str):
           self.save_message("WARNING","Erroneous date '"+date_str+"' : Check wildcards ('%' '_' '/') and format (YYYY-MM-DD hh:mi:ss)")
        return date_str
 
-    def executeQuery(self,cursor,sqlite_query,filters,orderby = None):
+    def execute_query(self,cursor,sqlite_query,filters,orderby = None):
        sqlite_param = []
        cnt = 0
        for filter in filters:
@@ -290,10 +296,10 @@ class Dumpzilla():
     ### DECODE PASSWORDS
     #############################################################################################################
 
-    def readsignonDB(self,dir):
+    def readsignonDB(self, dir):
        passwords_sources = ["signons.sqlite","logins.json"]
        decode_passwords_extraction_dict = {}
-
+       # TODO: Make self method to decode
        if self.libnss.NSS_Init(dir.encode("utf8"))!=0:
           self.save_message("ERROR","Error Initializing NSS_Init, probably no useful results.")
 
@@ -310,27 +316,37 @@ class Dumpzilla():
                 f.close()
                 _extraction_list = []
                 for l in jdata.get("logins"):
-                   _extraction_dict = {}
-                   if l.get("id") is not None:
-                      self.uname.data  = cast(c_char_p(b64decode(l.get("encryptedUsername"))),c_void_p)
-                      self.uname.len = len(b64decode(l.get("encryptedUsername")))
-                      self.passwd.data = cast(c_char_p(b64decode(l.get("encryptedPassword"))),c_void_p)
-                      self.passwd.len=len(b64decode(l.get("encryptedPassword")))
+                    _extraction_dict = {}
+                    if l.get("id") is not None:
+                        self.uname.data  = cast(c_char_p(b64decode(l.get("encryptedUsername"))),c_void_p)
+                        self.uname.len = len(b64decode(l.get("encryptedUsername")))
+                        self.passwd.data = cast(c_char_p(b64decode(l.get("encryptedPassword"))),c_void_p)
+                        self.passwd.len=len(b64decode(l.get("encryptedPassword")))
 
-                      if self.libnss.PK11SDR_Decrypt(byref(self.uname),byref(self.dectext),byref(self.pwdata))==-1:
-                         self.save_message("ERROR","Master Password used!")
-                         #return
+                        if self.libnss.PK11SDR_Decrypt(byref(self.uname), byref(self.dectext), byref(self.pwdata)) == -1:
+                            self.save_message("INFO","Master password required")
+                            password = c_char_p(self.get_user_value(a + " password: ").encode("utf8"))
+                            keyslot = self.libnss.PK11_GetInternalKeySlot()
+                            if keyslot is None:
+                                # Something went wrong!
+                                save_message("ERROR","Failed to retrieve internal KeySlot")
+                                return
+                            check_rc = self.libnss.PK11_CheckUserPassword(keyslot, password)
+                            if check_rc != 0:
+                                # Something went wrong with given password
+                                self.save_message("ERROR","Password decoding failed! Check master password")
+                                return;
 
-                      _extraction_dict["0-Web"] = self.decode_reg(l.get("hostname"))
-                      _extraction_dict["1-Username"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
+                        _extraction_dict["0-Web"] = self.decode_reg(l.get("hostname"))
+                        _extraction_dict["1-Username"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
 
-                      if self.libnss.PK11SDR_Decrypt(byref(self.passwd),byref(self.dectext),byref(self.pwdata))==-1:
-                         self.save_message("ERROR","Master Password used!")
-                         return
+                        if self.libnss.PK11SDR_Decrypt(byref(self.passwd),byref(self.dectext),byref(self.pwdata))==-1:
+                            self.save_message("ERROR","Master password decryption failed!")
+                            return
 
-                      _extraction_dict["2-Password"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
+                        _extraction_dict["2-Password"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
 
-                      _extraction_list.append(_extraction_dict)
+                        _extraction_list.append(_extraction_dict)
 
                 decode_passwords_extraction_dict[bbdd] = _extraction_list
 
@@ -340,29 +356,39 @@ class Dumpzilla():
                 conn.text_factory = bytes
                 cursor = conn.cursor()
                 try:
-                    self.executeQuery(cursor,"select hostname, encryptedUsername, encryptedPassword from moz_logins",[])
+                    self.execute_query(cursor,"select hostname, encryptedUsername, encryptedPassword from moz_logins",[])
                     _extraction_list = []
                     for row in cursor:
-                       _extraction_dict = {}
-                       self.uname.data  = cast(c_char_p(b64decode(row[1])),c_void_p)
-                       self.uname.len = len(b64decode(row[1]))
-                       self.passwd.data = cast(c_char_p(b64decode(row[2])),c_void_p)
-                       self.passwd.len=len(b64decode(row[2]))
+                        _extraction_dict = {}
+                        self.uname.data  = cast(c_char_p(b64decode(row[1])),c_void_p)
+                        self.uname.len = len(b64decode(row[1]))
+                        self.passwd.data = cast(c_char_p(b64decode(row[2])),c_void_p)
+                        self.passwd.len=len(b64decode(row[2]))
 
-                       if self.libnss.PK11SDR_Decrypt(byref(self.uname),byref(self.dectext),byref(self.pwdata))==-1:
-                          self.save_message("ERROR","Master Password used!")
-                          return
+                        if self.libnss.PK11SDR_Decrypt(byref(self.uname),byref(self.dectext),byref(self.pwdata))==-1:
+                            self.save_message("INFO","Master password required")
+                            password = c_char_p(self.get_user_value(a + " password: ").encode("utf8"))
+                            keyslot = self.libnss.PK11_GetInternalKeySlot()
+                            if keyslot is None:
+                                # Something went wrong!
+                                save_message("ERROR","Failed to retrieve internal KeySlot")
+                                return
+                            check_rc = self.libnss.PK11_CheckUserPassword(keyslot, password)
+                            if check_rc != 0:
+                                # Something went wrong with given password
+                                self.save_message("ERROR","Password decoding failed! Check master password")
+                                return;
 
-                       _extraction_dict["0-Web"] = self.decode_reg(row[0])
-                       _extraction_dict["1-Username"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
+                        _extraction_dict["0-Web"] = self.decode_reg(row[0])
+                        _extraction_dict["1-Username"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
 
-                       if self.libnss.PK11SDR_Decrypt(byref(self.passwd),byref(self.dectext),byref(self.pwdata))==-1:
-                          self.save_message("ERROR","Master Password used!")
-                          return
+                        if self.libnss.PK11SDR_Decrypt(byref(self.passwd),byref(self.dectext),byref(self.pwdata))==-1:
+                           self.save_message("ERROR","Master password decryption failed!")
+                           return
 
-                       _extraction_dict["2-Password"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
+                        _extraction_dict["2-Password"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
 
-                       _extraction_list.append(_extraction_dict)
+                        _extraction_list.append(_extraction_dict)
 
                     decode_passwords_extraction_dict[bbdd] = _extraction_list
 
@@ -370,11 +396,12 @@ class Dumpzilla():
                     self.libnss.NSS_Shutdown()
                 except sqlite3.OperationalError:
                     self.save_message("WARNING", bbdd + ": no data found!")
+
        if len(decode_passwords_extraction_dict) == 0:
           self.save_message("WARNING","Passwords database not found! Please, check file " + '|'.join(passwords_sources))
-       else:
-          # Saving extraction to main extraction list
-          self.total_extraction["decode"] = decode_passwords_extraction_dict
+
+       # Saving extraction to main extraction list
+       self.total_extraction["decode"] = decode_passwords_extraction_dict
 
 
 
@@ -464,44 +491,42 @@ class Dumpzilla():
                 cursor.close()
                 conn.close()
 
-        if len(exception_extraction_dict) > 0:
-            self.total_extraction["exceptions"] = exception_extraction_dict
+        self.total_extraction["exceptions"] = exception_extraction_dict
 
         if len(passwords_extraction_dict) == 0:
             self.save_message("WARNING","Passwords database not found! Please, check file " + '|'.join(passwords_sources))
         else:
-            # Saving extraction to main extraction list
-            self.total_extraction["passwords"] = passwords_extraction_dict
             if sys.platform.startswith('win') == False: # and sys.version.startswith('2.') == True and count > 0:
                 self.readsignonDB(dir)
-            #elif count == 0:
-            #     self.save_message("WARNING","Users not found!")
             else:
                 self.save_message("ERROR","Decode password only works on GNU/Linux")
+
+        # Saving extraction to main extraction list
+        self.total_extraction["passwords"] = passwords_extraction_dict
 
     ###############################################################################################################
     ### SHOW ALL DATA                                                                                             #
     ###############################################################################################################
 
     def All_execute(self,dir):
-       self.show_cookies_firefox(dir)
-       self.show_permissions_firefox(dir)
-       self.show_preferences_firefox(dir)
-       self.show_addons_firefox(dir)
-       self.show_extensions_firefox(dir)
-       self.show_search_engines(dir)
-       self.show_info_addons(dir)
-       self.show_downloads_firefox(dir)
-       self.show_downloads_history_firefox(dir)
-       self.show_downloadsdir_firefox(dir)
-       self.show_forms_firefox(dir)
-       self.show_history_firefox(dir)
-       self.show_bookmarks_firefox(dir)
-       self.show_passwords_firefox(dir)
-       self.show_cache(dir)
-       self.show_cert_override(dir)
-       self.show_thumbnails(dir)
-       self.show_session(dir)
+        self.show_cookies_firefox(dir)
+        self.show_permissions_firefox(dir)
+        self.show_preferences_firefox(dir)
+        self.show_addons_firefox(dir)
+        self.show_extensions_firefox(dir)
+        self.show_search_engines(dir)
+        self.show_info_addons(dir)
+        self.show_downloads_firefox(dir)
+        self.show_downloads_history_firefox(dir)
+        self.show_downloadsdir_firefox(dir)
+        self.show_forms_firefox(dir)
+        self.show_history_firefox(dir)
+        self.show_bookmarks_firefox(dir)
+        self.show_passwords_firefox(dir)
+        self.show_cache(dir)
+        self.show_cert_override(dir)
+        self.show_thumbnails(dir)
+        self.show_session(dir)
 
     ###############################################################################################################
     ### COOKIES                                                                                                   #
@@ -525,7 +550,7 @@ class Dumpzilla():
 
        cursor = conn.cursor()
        sqlite_query = "select baseDomain, name, value, host, path, datetime(expiry, 'unixepoch', 'localtime'), datetime(lastAccessed/1000000,'unixepoch','localtime') as last ,datetime(creationTime/1000000,'unixepoch','localtime') as creat, isSecure, isHttpOnly FROM moz_cookies"
-       self.executeQuery(cursor,sqlite_query,self.cookie_filters)
+       self.execute_query(cursor,sqlite_query,self.cookie_filters)
 
        _extraction_list = []
        for row in cursor:
@@ -553,9 +578,7 @@ class Dumpzilla():
 
        cookies_extraction_dict[bbdd] = _extraction_list
 
-       if len(cookies_extraction_dict) > 0:
-          # Saving extraction to main extraction list
-          self.total_extraction["cookies"] = cookies_extraction_dict
+       self.total_extraction["cookies"] = cookies_extraction_dict
 
        cursor.close()
        conn.close()
@@ -634,7 +657,7 @@ class Dumpzilla():
        cursor = conn.cursor()
        sqlite_query = "select count(*) from sqlite_master"
        master_filters = [["string","type","table"],["string","name","moz_perms"]]
-       self.executeQuery(cursor,sqlite_query,master_filters)
+       self.execute_query(cursor,sqlite_query,master_filters)
        for row in cursor:
           if row[0] > 0:
              permissions_tables.append("moz_perms")
@@ -673,7 +696,7 @@ class Dumpzilla():
                    self.permissions_filters.remove(f)
                    self.save_message("WARNING","modificationTime : Column not found in permissions database")
 
-          self.executeQuery(cursor,sqlite_query,self.permissions_filters)
+          self.execute_query(cursor,sqlite_query,self.permissions_filters)
 
           for row in cursor:
              _extraction_dict = {}
@@ -795,60 +818,59 @@ class Dumpzilla():
     ###############################################################################################################
 
     def show_addons_firefox(self,dir):
-       addons_extraction_dict = {}
-       addons_found = False
-       addons_sources = ["addons.sqlite","addons.json"]
+        addons_extraction_dict = {}
+        addons_found = False
+        addons_sources = ["addons.sqlite","addons.json"]
 
-       for a in addons_sources:
-          # Setting filename by OS
-          bbdd = self.get_path_by_os(dir, a)
+        for a in addons_sources:
+            # Setting filename by OS
+            bbdd = self.get_path_by_os(dir, a)
 
-          # Checking source file
-          if path.isfile(bbdd) == True:
-             addons_found = True
+            # Checking source file
+            if path.isfile(bbdd) == True:
+                addons_found = True
 
-             if a.endswith(".json") == True:
-                # JSON
-                f = open(bbdd)
-                jdata = json.loads(f.read())
-                f.close()
-                _extraction_list = []
-                for addon in jdata.get("addons"):
-                   _extraction_dict = {}
-                   if addon.get("id") is not None:
-                      _extraction_dict['0-Name'] = addon.get("name")
-                      _extraction_dict['1-Version'] = addon.get("version")
-                      _extraction_dict['2-Creator URL'] = addon.get("creator").get("url")
-                      _extraction_dict['3-Homepage URL'] = addon.get("homepageURL")
-                      _extraction_list.append(_extraction_dict)
+                if a.endswith(".json") == True:
+                    # JSON
+                    f = open(bbdd)
+                    jdata = json.loads(f.read())
+                    f.close()
+                    _extraction_list = []
+                    for addon in jdata.get("addons"):
+                        _extraction_dict = {}
+                        if addon.get("id") is not None:
+                            _extraction_dict['0-Name'] = addon.get("name")
+                            _extraction_dict['1-Version'] = addon.get("version")
+                            _extraction_dict['2-Creator URL'] = addon.get("creator").get("url")
+                            _extraction_dict['3-Homepage URL'] = addon.get("homepageURL")
+                            _extraction_list.append(_extraction_dict)
 
-                addons_extraction_dict[bbdd] = _extraction_list
+                    addons_extraction_dict[bbdd] = _extraction_list
 
-             elif a.endswith(".sqlite"):
-                # SQLITE
-                conn = sqlite3.connect(bbdd)
-                conn.text_factory = bytes
-                cursor = conn.cursor()
-                cursor.execute("select name,version,creatorURL,homepageURL from addon")
-                _extraction_list = []
-                for row in cursor:
-                   _extraction_dict = {}
-                   _extraction_dict['0-Name'] = self.decode_reg(row[0])
-                   _extraction_dict['1-Version'] = self.decode_reg(row[3])
-                   _extraction_dict['2-Creator URL'] = self.decode_reg(row[1])
-                   _extraction_dict['3-Homepage URL'] = self.decode_reg(row[2])
-                   _extraction_list.append(_extraction_dict)
+                elif a.endswith(".sqlite"):
+                    # SQLITE
+                    conn = sqlite3.connect(bbdd)
+                    conn.text_factory = bytes
+                    cursor = conn.cursor()
+                    cursor.execute("select name,version,creatorURL,homepageURL from addon")
+                    _extraction_list = []
+                    for row in cursor:
+                       _extraction_dict = {}
+                       _extraction_dict['0-Name'] = self.decode_reg(row[0])
+                       _extraction_dict['1-Version'] = self.decode_reg(row[3])
+                       _extraction_dict['2-Creator URL'] = self.decode_reg(row[1])
+                       _extraction_dict['3-Homepage URL'] = self.decode_reg(row[2])
+                       _extraction_list.append(_extraction_dict)
 
-                addons_extraction_dict[bbdd] = _extraction_list
+                    addons_extraction_dict[bbdd] = _extraction_list
 
-                cursor.close()
-                conn.close()
+                    cursor.close()
+                    conn.close()
 
-       if len(addons_extraction_dict) > 0:
-          # Saving extraction to main extraction list
-          self.total_extraction["addons"] = addons_extraction_dict
-       elif addons_found == False:
-          self.save_message("WARNING","Addons database not found! Please, check file %s" % '|'.join(addons_sources))
+        # Saving extraction to main extraction list
+        self.total_extraction["addons"] = addons_extraction_dict
+        if addons_found == False:
+            self.save_message("WARNING","Addons database not found! Please, check file %s" % '|'.join(addons_sources))
 
     ###############################################################################################################
     ### ADDONS INFO                                                                                               #
@@ -907,10 +929,9 @@ class Dumpzilla():
                 if y == 0:
                    self.save_message("INFO","The Addons-Info database " + a + " does not contain URLs or paths!")
 
-       if len(addinfo_extraction_dict) > 0:
-          # Saving extraction to main extraction list
-          self.total_extraction["addinfo"] = addinfo_extraction_dict
-       elif addinfo_found == False:
+       # Saving extraction to main extraction list
+       self.total_extraction["addinfo"] = addinfo_extraction_dict
+       if addinfo_found == False:
           self.save_message("WARNING","Addons-Info database not found! Please, check file " + '|'.join(addinfo_sources))
 
     ###############################################################################################################
@@ -990,10 +1011,9 @@ class Dumpzilla():
                 cursor.close()
                 conn.close()
 
-       if len(ext_extraction_dict) > 0:
-          # Saving extraction to main extraction list
-          self.total_extraction["extensions"] = ext_extraction_dict
-       elif ext_found == False:
+       # Saving extraction to main extraction list
+       self.total_extraction["extensions"] = ext_extraction_dict
+       if ext_found == False:
           self.save_message("WARNING","Extensions database not found! Please, check file" + '|'.join(ext_sources))
 
     ###############################################################################################################
@@ -1053,10 +1073,9 @@ class Dumpzilla():
                 cursor.close()
                 conn.close()
 
-       if len(se_extraction_dict) > 0:
-          # Saving extraction to main extraction list
-          self.total_extraction["engines"] = se_extraction_dict
-       elif se_found == False:
+       # Saving extraction to main extraction list
+       self.total_extraction["engines"] = se_extraction_dict
+       if se_found == False:
           self.save_message("WARNING","Search Engines database not found! Please, check file" + '|'.join(se_sources))
 
     ###############################################################################################################
@@ -1080,7 +1099,7 @@ class Dumpzilla():
 
        cursor = conn.cursor()
        sqlite_query = "select name,mimeType,maxBytes/1024,source,target,referrer,tempPath, datetime(startTime/1000000,'unixepoch','localtime') as start,datetime(endTime/1000000,'unixepoch','localtime') as end,state,preferredApplication,preferredAction from moz_downloads"
-       self.executeQuery(cursor,sqlite_query,downloads_filters)
+       self.execute_query(cursor,sqlite_query,downloads_filters)
 
        _extraction_list = []
        for row in cursor:
@@ -1133,7 +1152,7 @@ class Dumpzilla():
        else:
           self.downloads_history_filters.append(["string","ann.content","file%"])
 
-       self.executeQuery(cursor,sqlite_query,self.downloads_history_filters)
+       self.execute_query(cursor,sqlite_query,self.downloads_history_filters)
 
        _extraction_list = []
        for row in cursor:
@@ -1168,7 +1187,7 @@ class Dumpzilla():
        # Checking if timestamp column exists
        cursor = conn.cursor()
        sqlite_query = "pragma table_info(prefs)"
-       self.executeQuery(cursor,sqlite_query,[])
+       self.execute_query(cursor,sqlite_query,[])
        timestamp_found = False
        for row in cursor:
           if self.decode_reg(row[1]) == "timestamp":
@@ -1227,7 +1246,7 @@ class Dumpzilla():
 
        cursor = conn.cursor()
        sqlite_query = "select fieldname,value,timesUsed,datetime(firstUsed/1000000,'unixepoch','localtime') as last,datetime(lastUsed/1000000,'unixepoch','localtime') from moz_formhistory"
-       self.executeQuery(cursor,sqlite_query,self.forms_filters)
+       self.execute_query(cursor,sqlite_query,self.forms_filters)
 
        _extraction_list = []
        for row in cursor:
@@ -1269,9 +1288,9 @@ class Dumpzilla():
        sqlite_query = "select datetime(last_visit_date/1000000,'unixepoch','localtime') as last, title, url, visit_count from moz_places"
 
        if self.args.is_frequency_ok == False:
-          self.executeQuery(cursor,sqlite_query,self.history_filters,"ORDER BY last COLLATE NOCASE")
+          self.execute_query(cursor,sqlite_query,self.history_filters,"ORDER BY last COLLATE NOCASE")
        else:
-          self.executeQuery(cursor,sqlite_query,self.history_filters,"ORDER BY visit_count COLLATE NOCASE DESC")
+          self.execute_query(cursor,sqlite_query,self.history_filters,"ORDER BY visit_count COLLATE NOCASE DESC")
 
        _extraction_list = []
        for row in cursor:
@@ -1310,7 +1329,7 @@ class Dumpzilla():
 
        cursor = conn.cursor()
        sqlite_query = 'select bm.title,pl.url,datetime(bm.dateAdded/1000000,"unixepoch","localtime"),datetime(bm.lastModified/1000000,"unixepoch","localtime") as last from moz_places pl,moz_bookmarks bm where pl.id = bm.id'
-       self.executeQuery(cursor,sqlite_query,self.bookmarks_filters)
+       self.execute_query(cursor,sqlite_query,self.bookmarks_filters)
 
        _extraction_list = []
        for row in cursor:
@@ -1364,7 +1383,7 @@ class Dumpzilla():
 
                 cursor = conn.cursor()
                 sqlite_query = "select ClientID,key,DataSize,FetchCount,datetime(LastFetched/1000000,'unixepoch','localtime'),datetime(LastModified/1000000,'unixepoch','localtime') as last,datetime(ExpirationTime/1000000,'unixepoch','localtime') from moz_cache"
-                self.executeQuery(cursor,sqlite_query,self.cacheoff_filters)
+                self.execute_query(cursor,sqlite_query,self.cacheoff_filters)
 
                 _extraction_list = []
                 for row in cursor:
@@ -1379,10 +1398,9 @@ class Dumpzilla():
                 cursor.close()
                 conn.close()
 
-       if len(offlinecache_extraction_dict) > 0:
-          # Saving extraction to main extraction list
-          self.total_extraction["offlinecache"] = offlinecache_extraction_dict
-       elif cache_found == False:
+       # Saving extraction to main extraction list
+       self.total_extraction["offlinecache"] = offlinecache_extraction_dict
+       if cache_found == False:
           self.save_message("WARNING","Offline Cache database not found! Please check file OfflineCache/index.sqlite")
 
     ###############################################################################################################
@@ -1574,10 +1592,9 @@ class Dumpzilla():
 
              thumbnails_extraction_dict[d] = _extraction_list
 
-       if len(thumbnails_extraction_dict) > 0:
-          # Saving extraction to main extraction list
-          self.total_extraction["thumbnails"] = thumbnails_extraction_dict
-       elif thumbnails_found == False:
+       # Saving extraction to main extraction list
+       self.total_extraction["thumbnails"] = thumbnails_extraction_dict
+       if thumbnails_found == False:
           self.save_message("WARNING","No thumbnails found!")
 
     ###############################################################################################################
@@ -1585,30 +1602,29 @@ class Dumpzilla():
     ###############################################################################################################
 
     def show_cert_override(self,dir):
-       cert_override_extraction_dict = {}
+        cert_override_extraction_dict = {}
 
-       bbdd = self.get_path_by_os(dir,"cert_override.txt")
+        bbdd = self.get_path_by_os(dir,"cert_override.txt")
 
-       if path.isfile(bbdd):
-          lineas = open(bbdd).readlines()
+        if path.isfile(bbdd):
+            lineas = open(bbdd).readlines()
 
-          nl = 0
-          _extraction_list = []
-          for certificado in lineas:
-             if lineas[nl].split()[0].startswith("#") == False:
-                _extraction_dict = {}
-                _extraction_dict["0-Site"] = lineas[nl].split()[0]
-                _extraction_dict["1-Hash Algorithm"] = lineas[nl].split()[1]
-                _extraction_dict["2-Data"] = lineas[nl].split()[2]
-                _extraction_list.append(_extraction_dict)
-             nl = nl + 1
+            nl = 0
+            _extraction_list = []
+            for certificado in lineas:
+                if lineas[nl].split()[0].startswith("#") == False:
+                    _extraction_dict = {}
+                    _extraction_dict["0-Site"] = lineas[nl].split()[0]
+                    _extraction_dict["1-Hash Algorithm"] = lineas[nl].split()[1]
+                    _extraction_dict["2-Data"] = lineas[nl].split()[2]
+                    _extraction_list.append(_extraction_dict)
+                nl = nl + 1
 
-          cert_override_extraction_dict[bbdd] = _extraction_list
+            cert_override_extraction_dict[bbdd] = _extraction_list
+        else:
+            self.save_message("WARNING","Cert override file not found! Please, check file cert_override.txt")
 
-          self.total_extraction["cert_override"] = cert_override_extraction_dict
-
-       else:
-          self.save_message("WARNING","Cert override file not found! Please, check file cert_override.txt")
+        self.total_extraction["cert_override"] = cert_override_extraction_dict
 
     ###############################################################################################################
     ### WATCH                                                                                                     #
@@ -1620,7 +1636,7 @@ class Dumpzilla():
           self.save_message("ERROR","--Watch option not supported on Windows!")
           return
        elif sw_py_path == '':
-          sw_py_path = input('Python 3 path (Press Enter for default - ' + self.PYTHON3_DEF + '): ').strip() # Python 3.x path (NO Windows). Example: /usr/bin/python3.4
+          sw_py_path = self.get_user_value('Python 3 path (Press Enter for default - ' + self.PYTHON3_DEF + '): ').strip() # Python 3.x path (NO Windows). Example: /usr/bin/python3.4
           if sw_py_path == '':
             sw_py_path = self.PYTHON3_DEF
 
@@ -1685,10 +1701,9 @@ class Dumpzilla():
 
              session_extraction_dict[bbdd] = _extraction_list
 
-       if len(session_extraction_dict) > 0:
-             # Saving extraction to main extraction list
-             self.total_extraction["session"] = session_extraction_dict
-       elif not session_found:
+       # Saving extraction to main extraction list
+       self.total_extraction["session"] = session_extraction_dict
+       if not session_found:
           self.save_message("WARNING","No session info found!")
 
     ###############################################################################################################
@@ -1790,6 +1805,7 @@ class Dumpzilla():
                    i = tab.get("index") - 1
                 print ("\nTitle: %s" % tab.get("entries")[i].get("title"))
                 print ("URL: %s" % tab.get("entries")[i].get("url"))
+                #print(str(tab.get("entries")[i]))
                 if tab.get("entries")[i].get("formdata") is not None and str(tab.get("entries")[i].get("formdata")) != "{}" :
                    countform = countform + 1
                    if str(tab.get("entries")[i].get("formdata").get("xpath")) == "{}" and str(tab.get("entries")[i].get("formdata").get("id")) != "{}":
@@ -2021,10 +2037,10 @@ Profile:
                      cookie_host = format(self.args.hostcookie[0])
                      self.cookie_filters.append(["string","host",cookie_host])
                  if self.args.access:
-                     cookie_access_date = self.validateDate(format(self.args.access[0]))
+                     cookie_access_date = self.validate_date(format(self.args.access[0]))
                      self.cookie_filters.append(["date","last",cookie_access_date])
                  if self.args.create:
-                     cookie_create_date = self.validateDate(format(self.args.create[0]))
+                     cookie_create_date = self.validate_date(format(self.args.create[0]))
                      self.cookie_filters.append(["date","creat",cookie_create_date])
                  if self.args.secure:
                      cookie_secure = format(self.args.secure[0])
@@ -2033,12 +2049,12 @@ Profile:
                      cookie_httponly = format(self.args.httponly[0])
                      self.cookie_filters.append(["number","isHttpOnly",cookie_httponly])
                  if self.args.last_range:
-                     cookie_access_range1 = self.validateDate(format(self.args.last_range[0]))
-                     cookie_access_range2 = self.validateDate(format(self.args.last_range[1]))
+                     cookie_access_range1 = self.validate_date(format(self.args.last_range[0]))
+                     cookie_access_range2 = self.validate_date(format(self.args.last_range[1]))
                      self.cookie_filters.append(["range","last",[cookie_access_range1,cookie_access_range2]])
                  if self.args.create_range:
-                     cookie_create_range1 = self.validateDate(format(self.args.create_range[0]))
-                     cookie_create_range2 = self.validateDate(format(self.args.create_range[1]))
+                     cookie_create_range1 = self.validate_date(format(self.args.create_range[0]))
+                     cookie_create_range2 = self.validate_date(format(self.args.create_range[1]))
                      self.cookie_filters.append(["range","creat",[cookie_create_range1,cookie_create_range2]])
 
 
@@ -2050,18 +2066,18 @@ Profile:
                      permissions_type = format(self.args.type[0])
                      self.permissions_filters.append(["string","type",permissions_type])
                  if self.args.modif:
-                     permissions_modif_date = self.validateDate(format(self.args.modif[0]))
+                     permissions_modif_date = self.validate_date(format(self.args.modif[0]))
                      self.permissions_filters.append(["date","modif",permissions_modif_date])
                  if self.args.modif_range:
-                     permissions_modif_range1 = self.validateDate(format(self.args.modif_range[0]))
-                     permissions_modif_range2 = self.validateDate(format(self.args.modif_range[1]))
+                     permissions_modif_range1 = self.validate_date(format(self.args.modif_range[0]))
+                     permissions_modif_range2 = self.validate_date(format(self.args.modif_range[1]))
                      self.permissions_filters.append(["range","modif",[permissions_modif_range1,permissions_modif_range2]])
 
 
             if self.args.is_downloads_ok:
                  if self.args.range:
-                     downloads_range1 = self.validateDate(format(self.args.range[0]))
-                     downloads_range2 = self.validateDate(format(self.args.range[1]))
+                     downloads_range1 = self.validate_date(format(self.args.range[0]))
+                     downloads_range2 = self.validate_date(format(self.args.range[1]))
                      self.downloads_filters.append(["range","start",[downloads_range1,downloads_range2]])
                      self.downloads_history_filters.append(["range","modified",[downloads_range1,downloads_range2]])
 
@@ -2071,8 +2087,8 @@ Profile:
                      forms_value = format(self.args.value[0])
                      self.forms_filters.append(["string","value",forms_value])
                  if self.args.forms_range:
-                     forms_range1 = self.validateDate(format(self.args.forms_range[0]))
-                     forms_range2 = self.validateDate(format(self.args.forms_range[1]))
+                     forms_range1 = self.validate_date(format(self.args.forms_range[0]))
+                     forms_range2 = self.validate_date(format(self.args.forms_range[1]))
                      self.forms_filters.append(["range","last",[forms_range1,forms_range2]])
 
 
@@ -2084,25 +2100,25 @@ Profile:
                      history_title = format(self.args.title[0])
                      self.history_filters.append(["string","title",history_title])
                  if self.args.date:
-                     history_date = self.validateDate(format(self.args.date[0]))
+                     history_date = self.validate_date(format(self.args.date[0]))
                      self.history_filters.append(["date","last",history_date])
                  if self.args.history_range:
-                     history_range1 = self.validateDate(format(self.args.history_range[0]))
-                     history_range2 = self.validateDate(format(self.args.history_range[1]))
+                     history_range1 = self.validate_date(format(self.args.history_range[0]))
+                     history_range2 = self.validate_date(format(self.args.history_range[1]))
                      self.history_filters.append(["range","last",[history_range1,history_range2]])
 
 
             if self.args.is_bookmarks_ok:
                  if self.args.bookmarks_range:
-                     bookmarks_range1 = self.validateDate(format(self.args.bookmarks_range[0]))
-                     bookmarks_range2 = self.validateDate(format(self.args.bookmarks_range[1]))
+                     bookmarks_range1 = self.validate_date(format(self.args.bookmarks_range[0]))
+                     bookmarks_range2 = self.validate_date(format(self.args.bookmarks_range[1]))
                      self.bookmarks_filters.append(["range","last",[bookmarks_range1,bookmarks_range2]])
 
 
             if self.args.is_cacheoff_ok:
                  if self.args.cache_range:
-                     cacheoff_range1 = self.validateDate(format(self.args.cache_range[0]))
-                     cacheoff_range2 = self.validateDate(format(self.args.cache_range[1]))
+                     cacheoff_range1 = self.validate_date(format(self.args.cache_range[0]))
+                     cacheoff_range2 = self.validate_date(format(self.args.cache_range[1]))
                      self.cacheoff_filters.append(["range","last",[cacheoff_range1,cacheoff_range2]])
                  if self.args.extract:
                      self.is_cacheoff_extract_ok = True
@@ -2228,35 +2244,35 @@ Profile:
                 info_headers = sorted(self.total_extraction.keys())
                 summary = {}
                 for header in info_headers:
-                     sources = self.total_extraction[header].keys()
-                     for source in sources:
+                    sources = self.total_extraction[header].keys()
+                    for source in sources:
                         # INFO HEADER BY SOURCE
                         if not self.args.is_summary_ok:
-                           if path.isfile(source):
-                              self.show_title(titles[header] +self.show_sha256(source), 302)
-                           else:
-                              self.show_title(titles[header], 243)
+                            if path.isfile(source):
+                                self.show_title(titles[header] +self.show_sha256(source), 302)
+                            else:
+                                self.show_title(titles[header], 243)
 
                         if header in summary.keys():
-                           summary[header] = summary[header] + len(self.total_extraction[header][source])
+                            summary[header] = summary[header] + len(self.total_extraction[header][source])
                         else:
-                           summary[header] = len(self.total_extraction[header][source])
+                            summary[header] = len(self.total_extraction[header][source])
 
                         if summary[header] > 0:
-                           for i in self.total_extraction[header][source]:
-                              tags = sorted(i.keys())
-                              for tag in tags:
-                                 if not self.args.is_summary_ok:
-                                    if i[tag]:
-                                       print(tag.split('-',1)[1] + ": " + str(i[tag]))
-                                    else:
-                                       print(tag.split('-',1)[1] + ": ")
-                              if not self.args.is_summary_ok:
-                                 print("")
+                            for i in self.total_extraction[header][source]:
+                                tags = sorted(i.keys())
+                                for tag in tags:
+                                    if not self.args.is_summary_ok:
+                                        if i[tag]:
+                                            print(tag.split('-',1)[1] + ": " + str(i[tag]))
+                                        else:
+                                            print(tag.split('-',1)[1] + ": ")
+                                if not self.args.is_summary_ok:
+                                    print("")
                         else:
-                           if not self.args.is_summary_ok:
-                              print("No data found!")
-                           summary[header] = 0
+                            if not self.args.is_summary_ok:
+                                print("No data found!")
+                            summary[header] = 0
 
                 info_headers = sorted(summary.keys())
 
@@ -2278,7 +2294,8 @@ Profile:
 
 if __name__ == '__main__':
     app = Dumpzilla(sys.argv)
+
 # Site: www.dumpzilla.org
-# Author: Busindre ( busilezas[@]gmail.com )
-#         OsamaNehme ( onehdev[@]gmail.com )
+# Authors: Busindre ( busilezas[@]gmail.com )
+#                   OsamaNehme ( onehdev[@]gmail.com )
 # Version: 2016/02/22
