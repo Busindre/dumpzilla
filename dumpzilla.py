@@ -1658,7 +1658,7 @@ class Dumpzilla():
           return rparam
        except:
           self.save_message("ERROR","Missing argument for parameter " + arg)
-          print(self.show_help())
+          self.show_help()
 
     ###############################################################################################################
     ### SESSION                                                                                                   #
@@ -1825,28 +1825,33 @@ class Dumpzilla():
     ###############################################################################################################
 
     def show_help(self):
-       return format("""python dumpzilla.py PROFILE_DIR [Options]
+        print("\nDumpzilla Forensic Tool ~ Last revision: 20161024 ~ www.dumpzilla.org\n\nUsage:\n\n " + self.get_help_msg())
 
-Tip: By default shows everything but the DOM data. Doesn't extract thumbnails or HTML 5 offline.
+    def get_help_msg(self):
+       return format("""python dumpzilla.py PROFILE_DIR [OPTIONS]
 
 Options:
 
- --Cookies [-showdom] [-domain <string>] [-name <string>] [-hostcookie <string>] [-access <date>] [-create <date>] [-secure <0|1>] [-httponly <0|1>] [-last_range <start> <end>] [-create_range <start> <end>]
- --Permissions [-host <string>]  [-modif <date>] [-modif_range <start> <end>]
+ --Addons
+ --Bookmarks [-bookmarks_range <start> <end>]
+ --Certoverride
+ --Cookies [-showdom] [-domain <string>] [-name <string>] [-hostcookie <string>] [-access <date>] [-create <date>]
+           [-secure <0|1>] [-httponly <0|1>] [-last_range <start> <end>] [-create_range <start> <end>]
  --Downloads [-range <start> <end>]
  --Forms [-value <string>] [-forms_range <start> <end>]
+ --Help (shows this help message and exit)
  --History [-url <string>] [-title <string>] [-date <date>] [-history_range <start> <end>] [-frequency]
- --Bookmarks [-bookmarks_range <start> <end>]
  --OfflineCache [-cache_range <start> <end> -extract <directory>]
- --Thumbnails [-extract_thumb <directory>]
- --Addons
  --Preferences
  --Passwords (password decoding only works on Unix)
- --Certoverride
- --Session
+ --Permissions [-host <string>]  [-modif <date>] [-modif_range <start> <end>]
  --RegExp (uses Regular Expresions for string type filters instead of Wildcards)
+ --Session
  --Summary (no data extraction,  only summary report)
+ --Thumbnails [-extract_thumb <directory>]
  --Watch [-text <string>] (shows in daemon mode the URLs and text form in real time; Unix only)
+
+ * If no options specified, shows everything except DOM data. Doesn't extract Thumbnails or HTML 5 offline by default.
 
 Wildcards (without RegExp option):
 
@@ -1872,7 +1877,7 @@ Profile:
     ###############################################################################################################
     def __init__(self, argv):
         self.has_colours = self.has_colours(sys.stdout)
-        parser = argparse.ArgumentParser(usage=self.show_help())
+        parser = argparse.ArgumentParser(usage=self.get_help_msg(), add_help=False)
         parser.add_argument('filename')
         is_all_ok = False
         if len(argv) == 2:
@@ -1885,6 +1890,11 @@ Profile:
                         help="(uses Regular Expresions for string type filters instead of Wildcards)")
         parser.add_argument("--Summary", action="store_true", default=False,  dest='is_summary_ok',
                         help="(only shows debug messages and summary report)")
+        #...........................................
+        #... Help message
+        #...........................................
+        parser.add_argument("--Help", action="store_true", default=False, dest='is_help_ok',
+                        help="Shows this help message and exit")
         #...........................................
         #... Cookie parameters
         #...........................................
@@ -2023,6 +2033,11 @@ Profile:
         if path.isdir(dir) and len(argv) >= 2:
 
             dir = path.abspath(dir)
+
+            if self.args.is_help_ok:
+                self.show_help();
+                sys.exit(0);
+
             if self.args.is_cookie_ok:
                  if self.args.showdom:
                      self.is_dom_ok = True
@@ -2136,7 +2151,7 @@ Profile:
 
 
             if len(vars(self.args)) == 0:
-                print(self.show_help())
+                self.show_help()
                 sys.exit()
 
             ###############
@@ -2208,7 +2223,8 @@ Profile:
                 self.show_watch(dir,self.watch_text)
                 anyexec = True
             if not anyexec:
-                self.All_execute(dir)
+                if (len(argv) == 2) or (len(argv) == 3 and self.args.is_summary_ok):
+                    self.All_execute(dir)
 
             ###############
             ### SUMMARY
@@ -2276,12 +2292,12 @@ Profile:
 
                 info_headers = sorted(summary.keys())
 
-                if len(info_headers) == 0 and arg_count > 0:
+                if len(info_headers) == 0 and len(argv) == 2:
                      self.show_title("Total Information", 243)
                      print("No data found!")
                 elif len(info_headers) == 0:
                      self.save_message("ERROR","Missing argument!")
-                     print(self.show_help())
+                     self.show_help()
                 else:
                      self.show_title("Total Information", 243)
                      for header in info_headers:
@@ -2289,7 +2305,7 @@ Profile:
                 print("")
         else:
             self.save_message("ERROR","Failed to read profile directory: " + dir)
-            print(self.show_help())
+            self.show_help()
             sys.exit()
 
 if __name__ == '__main__':
