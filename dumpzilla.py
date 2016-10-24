@@ -1825,7 +1825,29 @@ class Dumpzilla():
     ###############################################################################################################
 
     def show_help(self):
-        print("\nDumpzilla Forensic Tool ~ Last revision: 20161024 ~ www.dumpzilla.org\n\nUsage:\n\n " + self.get_help_msg())
+        logo = """
+                ./oyhhyo/-`  `..`
+            :smMNdhyyyhdNMNNmmmNh-
+         .omMNhsoshddyoohhhdmNMMMN`
+       :hMMMNysoydNNoosdhhNdhdMMNMy:
+    `+mMMMMMMhooooshoymNdsshsmmhmhhmNhs/.
+   .+//smMMMdooooosyhdddhohmhsyysoooosydmNds-
+    .yNNMMNddoooomoooooooodsNMmyoooooooooohMM-
+  `+s/omMMdosooosMyoooooooNdMMMMMmyoooooooNmM/
+    +yoyMMMsooooyMNdoooooohMMNNMMMmNmdhyssssMy
+   ``-dNhMMMyooosdysshyooooshdyyhmNNMNmNMmNNN.
+    `+--mNMMMhoooossoodNdhyyhddmNmhyyyhNMNmm:
+      -/omNMNoooooooooosmMMMNh+::/+syddy/`
+       `-hMMNmhsoooooosmmMN/
+         +mNdysoooooohdydM-
+           /hmhsoooooyyNMh            Dumpzilla Forensic Tool
+             `/shddhhmNMM-               www.dumpzilla.org
+                  `-:////.                   v20161024
+
+Usage:
+
+ """
+        print(logo + self.get_help_msg())
 
     def get_help_msg(self):
        return format("""python dumpzilla.py PROFILE_DIR [OPTIONS]
@@ -1851,8 +1873,6 @@ Options:
  --Thumbnails [-extract_thumb <directory>]
  --Watch [-text <string>] (shows in daemon mode the URLs and text form in real time; Unix only)
 
- * If no options specified, shows everything except DOM data. Doesn't extract Thumbnails or HTML 5 offline by default.
-
 Wildcards (without RegExp option):
 
  '%%'  Any string of any length (including zero length)
@@ -1863,7 +1883,7 @@ Date syntax:
 
  YYYY-MM-DD hh:mi:ss (wildcards allowed)
 
-Profile:
+Profile location:
 
  WinXP profile -> 'C:\\Documents and Settings\\xx\\Application Data\\Mozilla\\Firefox\\Profiles\\xxxx.default'
  Win7 profile  -> 'C:\\Users\\xx\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\xxxx.default'
