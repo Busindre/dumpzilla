@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sqlite3, sys, glob, shutil, json, time, hashlib, re, os
+import sqlite3, sys, glob, shutil, json, time, hashlib, re, os, logging
 from base64 import b64decode
 from os import path,walk,makedirs,remove
 from ctypes import (Structure, c_uint, c_void_p, c_ubyte,c_char_p, CDLL, cast,byref,string_at)
@@ -73,12 +73,7 @@ class Dumpzilla():
     ### DEFAULTS
     ###############
 
-    # Valid parameters
-    # parameters = ["--All", "--Preferences", "--Summary", "--RegExp", "--Cookies", "-showdom", "-domain", "-name", "-hostcookie", "-access", "-create", "-secure", "-httponly", "-last_range", "-last_range", "-create_range", "--Permissions", "-host", "-type","-modif","-modif_range","--Addons", "--Downloads", "-range", "--Forms", "-value", "-forms_range", "--History", "-url", "-frequency", "-title", "-date", "-history_range", "--Bookmarks", "-bookmarks_range", "--Passwords", "--OfflineCache", "-cache_range", "-extract", "--Certoverride", "--Thumbnails", "-extract_thumb", "--Session", "--Watch", "-text", "--Live"]
-
     # TODO: Make a object with all parameters' info
-
-    BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
 
     # --Cookies
     cookie_filters = []
@@ -114,9 +109,6 @@ class Dumpzilla():
 
     args = None
 
-    # Debug messages list [message_type, message] (INFO, WARNING, ERROR)
-    message_list = []
-
     watchsecond = 4 # --Watch option: Seconds update. (NO Windows)
     PYTHON3_DEF  = '/usr/bin/python3'
     PYTHON3_PATH = ''
@@ -145,40 +137,66 @@ class Dumpzilla():
     passwd = SECItem()
     dectext = SECItem()
 
-    ###############################################################################################################
-
-    ###############################################################################################################
+    ####################################################
     #                                                                                                             #
-    #   AUX FUNCTIONS                                                                                             #
+    #   AUX METHODS                                                                                   #
     #                                                                                                             #
-    ###############################################################################################################
-
-    # Following from Python cookbook, #475186
-    def has_colours(self, stream):
-        if not hasattr(stream, "isatty"):
-            return False
-        if not stream.isatty():
-            return False # auto color only on TTYs
-        try:
-            import curses
-            curses.setupterm()
-            return curses.tigetnum("colors") > 2
-        except:
-            # guess false in case of error
-            return False
-
-    def color_printout(self, text, colour=WHITE):
-        if self.has_colours:
-                seq = "\x1b[1;%dm" % (30+colour) + text + "\x1b[0m"
-                sys.stdout.write(seq)
-        else:
-                sys.stdout.write(text)
+    ####################################################
 
     def get_user_value(self, message):
         if sys.version.startswith('2.') == True:
             return raw_input(message);
         else:
             return input(message);
+
+    def log(self, type, message):
+        # These are the sequences need to get colored ouput
+        RESET_SEQ = "\033[0m"
+        COLOR_SEQ = "\033[1;%dm"
+        BOLD_SEQ = "\033[1m"
+
+        BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
+
+        LEVELS = {
+            'DEBUG': {
+                'color': BLUE,
+                'funct': self.logger.debug
+            },
+            'WARNING': {
+                'color': YELLOW,
+                'funct': self.logger.warning
+            },
+            'INFO': {
+                'color': GREEN,
+                'funct': self.logger.info
+            },
+            'ERROR': {
+                'color': RED,
+                'funct': self.logger.error
+            },
+            'CRITICAL': {
+                'color': RED,
+                'funct': self.logger.critical
+            }
+        }
+        # remove ch to logger
+        if hasattr(self, 'ch'):
+            self.logger.removeHandler(self.ch)
+
+        # create console handler and set level to debug
+        self.ch = logging.StreamHandler()
+
+        # create formatter
+        formatter = logging.Formatter('['+ COLOR_SEQ % (30 + LEVELS[type]['color']) + '%(levelname)s' + RESET_SEQ  + '] %(message)s')
+        if (self.verbosity_level == "DEBUG"):
+            formatter = logging.Formatter(COLOR_SEQ % (30 + LEVELS[type]['color']) + '%(levelname)s' + RESET_SEQ  + ' - %(asctime)s - ' + sys.argv[0] + ' - %(message)s')
+
+        # add formatter to ch
+        self.ch.setFormatter(formatter)
+
+        # add ch to logger
+        self.logger.addHandler(self.ch)
+        LEVELS[type]['funct'](message)
 
     def get_path_by_os(self, dir, file, cd_dir = None):
        delimiter = "/"
@@ -199,23 +217,13 @@ class Dumpzilla():
           else:
              return reg.decode()
        except UnicodeDecodeError:
-          self.save_message("ERROR","UnicodeDecodeError : "+str(sys.exc_info()[1]))
+          self.log("ERROR","UnicodeDecodeError : "+str(sys.exc_info()[1]))
           return None
-
-    def save_message(self, _type, _text):
-        colour = self.GREEN;
-        if _type == "ERROR":
-            colour = self.RED;
-        elif _type == "WARNING":
-            colour = self.YELLOW;
-        self.color_printout("[" + _type + "] ",colour)
-        print(_text )
-        self.message_list.append([_type,_text])
 
     def show_info_header(self,profile):
         if sys.version.startswith('2.') == True:
-            self.save_message("WARNING", "Python 2.x currently used, Python 3.x and UTF-8 is recommended!")
-        self.save_message("INFO", "Mozilla Profile: " + str(profile))
+            self.log("WARNING","Python 2.x currently used, Python 3.x and UTF-8 is recommended!")
+        self.log("INFO",  "Mozilla Profile: " + str(profile))
 
     def show_title(self,varText,varSize):
        varText = "\n"+varText+"\n"
@@ -233,12 +241,12 @@ class Dumpzilla():
              return None
        except: # catch *all* exceptions
           e = str(sys.exc_info()[0]) + " " + str(sys.exc_info()[1])
-          self.save_message("ERROR", "Error using RegExp " + e)
+          self.log("ERROR", "Error using RegExp " + e)
           return None
 
     def validate_date(self,date_str):
        if not self.regexp('^[0-9_%:\- ]{1,19}$',date_str):
-          self.save_message("WARNING","Erroneous date '"+date_str+"' : Check wildcards ('%' '_' '/') and format (YYYY-MM-DD hh:mi:ss)")
+          self.log("WARNING","Erroneous date '"+date_str+"' : Check wildcards ('%' '_' '/') and format (YYYY-MM-DD hh:mi:ss)")
        return date_str
 
     def execute_query(self,cursor,sqlite_query,filters,orderby = None):
@@ -284,13 +292,30 @@ class Dumpzilla():
     ###############################################################################################################
 
     def show_sha256(self,filepath):
-       sha256 = hashlib.sha256()
-       f = open(filepath, 'rb')
-       try:
-          sha256.update(f.read())
-       finally:
-          f.close()
-       return "[SHA256 hash: "+sha256.hexdigest()+"]"
+        sha256 = hashlib.sha256()
+        f = open(filepath, 'rb')
+        try:
+           sha256.update(f.read())
+        finally:
+           f.close()
+        return "[SHA256 hash: "+sha256.hexdigest()+"]"
+
+    def export_sha256(self,destination,header,sources):
+        sha256_data = {}
+
+        for source in sources:
+           if path.isfile(source):
+                sha256 = hashlib.sha256()
+                f = open(source, 'rb')
+                try:
+                   sha256.update(f.read())
+                finally:
+                   f.close()
+                sha256_data[source] = sha256.hexdigest()
+
+        outputFilename = header + '.sha256.json';
+        with open(destination + outputFilename, 'w') as fp:
+            json.dump(sha256_data, fp)
 
     #############################################################################################################
     ### DECODE PASSWORDS
@@ -301,7 +326,7 @@ class Dumpzilla():
        decode_passwords_extraction_dict = {}
        # TODO: Make self method to decode
        if self.libnss.NSS_Init(dir.encode("utf8"))!=0:
-          self.save_message("ERROR","Error Initializing NSS_Init, probably no useful results.")
+          self.log("ERROR","Error Initializing NSS_Init, probably no useful results.")
 
        for a in passwords_sources:
           # Setting filename by OS
@@ -324,24 +349,24 @@ class Dumpzilla():
                         self.passwd.len=len(b64decode(l.get("encryptedPassword")))
 
                         if self.libnss.PK11SDR_Decrypt(byref(self.uname), byref(self.dectext), byref(self.pwdata)) == -1:
-                            self.save_message("INFO","Master password required")
+                            self.log("INFO", "Master password required")
                             password = c_char_p(self.get_user_value(a + " password: ").encode("utf8"))
                             keyslot = self.libnss.PK11_GetInternalKeySlot()
                             if keyslot is None:
                                 # Something went wrong!
-                                save_message("ERROR","Failed to retrieve internal KeySlot")
+                                self.log("ERROR","Failed to retrieve internal KeySlot")
                                 return
                             check_rc = self.libnss.PK11_CheckUserPassword(keyslot, password)
                             if check_rc != 0:
                                 # Something went wrong with given password
-                                self.save_message("ERROR","Password decoding failed! Check master password")
+                                self.log("ERROR","Password decoding failed! Check master password")
                                 return;
 
                         _extraction_dict["0-Web"] = self.decode_reg(l.get("hostname"))
                         _extraction_dict["1-Username"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
 
                         if self.libnss.PK11SDR_Decrypt(byref(self.passwd),byref(self.dectext),byref(self.pwdata))==-1:
-                            self.save_message("ERROR","Master password decryption failed!")
+                            self.log("ERROR","Master password decryption failed!")
                             return
 
                         _extraction_dict["2-Password"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
@@ -366,24 +391,24 @@ class Dumpzilla():
                         self.passwd.len=len(b64decode(row[2]))
 
                         if self.libnss.PK11SDR_Decrypt(byref(self.uname),byref(self.dectext),byref(self.pwdata))==-1:
-                            self.save_message("INFO","Master password required")
+                            self.log("INFO", "Master password required")
                             password = c_char_p(self.get_user_value(a + " password: ").encode("utf8"))
                             keyslot = self.libnss.PK11_GetInternalKeySlot()
                             if keyslot is None:
                                 # Something went wrong!
-                                save_message("ERROR","Failed to retrieve internal KeySlot")
+                                self.log("ERROR","Failed to retrieve internal KeySlot")
                                 return
                             check_rc = self.libnss.PK11_CheckUserPassword(keyslot, password)
                             if check_rc != 0:
                                 # Something went wrong with given password
-                                self.save_message("ERROR","Password decoding failed! Check master password")
+                                self.log("ERROR","Password decoding failed! Check master password")
                                 return;
 
                         _extraction_dict["0-Web"] = self.decode_reg(row[0])
                         _extraction_dict["1-Username"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
 
                         if self.libnss.PK11SDR_Decrypt(byref(self.passwd),byref(self.dectext),byref(self.pwdata))==-1:
-                           self.save_message("ERROR","Master password decryption failed!")
+                           self.log("ERROR","Master password decryption failed!")
                            return
 
                         _extraction_dict["2-Password"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
@@ -395,10 +420,10 @@ class Dumpzilla():
                     conn.close()
                     self.libnss.NSS_Shutdown()
                 except sqlite3.OperationalError:
-                    self.save_message("WARNING", bbdd + ": no data found!")
+                    self.log("WARNING",bbdd + ": no data found!")
 
        if len(decode_passwords_extraction_dict) == 0:
-          self.save_message("WARNING","Passwords database not found! Please, check file " + '|'.join(passwords_sources))
+          self.log("WARNING","Passwords database not found! Please, check file " + '|'.join(passwords_sources))
 
        # Saving extraction to main extraction list
        self.total_extraction["decode"] = decode_passwords_extraction_dict
@@ -490,20 +515,20 @@ class Dumpzilla():
                         passwords_extraction_dict[bbdd] = _extraction_list
                     except:
                        e = str(sys.exc_info()[0])
-                       self.save_message("ERROR","Can't process file " + a + ":" + e )
-                       
+                       self.log("ERROR","Can't process file " + a + ":" + e )
+
                     cursor.close()
                     conn.close()
 
         self.total_extraction["exceptions"] = exception_extraction_dict
 
         if len(passwords_extraction_dict) == 0:
-            self.save_message("WARNING","Passwords database not found! Please, check file " + '|'.join(passwords_sources))
+            self.log("WARNING","Passwords database not found! Please, check file " + '|'.join(passwords_sources))
         else:
             if sys.platform.startswith('win') == False: # and sys.version.startswith('2.') == True and count > 0:
                 self.readsignonDB(dir)
             else:
-                self.save_message("ERROR","Decode password only works on GNU/Linux")
+                self.log("ERROR","Decode password only works on GNU/Linux")
 
         # Saving extraction to main extraction list
         self.total_extraction["passwords"] = passwords_extraction_dict
@@ -543,7 +568,7 @@ class Dumpzilla():
        bbdd = self.get_path_by_os(dir, 'cookies.sqlite')
 
        if path.isfile(bbdd) == False:
-          self.save_message("WARNING","Cookies database not found! Please, check file cookies.sqlite")
+          self.log("WARNING","Cookies database not found! Please, check file cookies.sqlite")
           return
 
        conn = sqlite3.connect(bbdd)
@@ -595,12 +620,12 @@ class Dumpzilla():
           bbdd = self.get_path_by_os(dir, 'webappsstore.sqlite')
 
           if path.isfile(bbdd) == False:
-             self.save_message("WARNING","Webappsstore database not found! Please, check file webappsstore.sqlite")
+             self.log("WARNING","Webappsstore database not found! Please, check file webappsstore.sqlite")
              return
 
           # WARNING! Only RegExp filter allowed!
           if len(self.domain_filters) > 0 and self.args.is_regexp_ok == False :
-             self.save_message("WARNING","Showing all DOM storage, to filter please use RegExp parameter")
+             self.log("WARNING","Showing all DOM storage, to filter please use RegExp parameter")
 
           conn = sqlite3.connect(bbdd)
           conn.text_factory = bytes
@@ -645,7 +670,7 @@ class Dumpzilla():
        bbdd = self.get_path_by_os(dir, 'permissions.sqlite')
 
        if path.isfile(bbdd) == False:
-          self.save_message("WARNING","Permissions database not found! Please, check file permissions.sqlite")
+          self.log("WARNING","Permissions database not found! Please, check file permissions.sqlite")
           return
 
        conn = sqlite3.connect(bbdd)
@@ -698,7 +723,7 @@ class Dumpzilla():
              for f in self.permissions_filters:
                 if f[1] == "modif":
                    self.permissions_filters.remove(f)
-                   self.save_message("WARNING","modificationTime : Column not found in permissions database")
+                   self.log("WARNING","modificationTime : Column not found in permissions database")
 
           self.execute_query(cursor,sqlite_query,self.permissions_filters)
 
@@ -734,7 +759,7 @@ class Dumpzilla():
        dirprefs = self.get_path_by_os(dir, 'prefs.js')
 
        if path.isfile(dirprefs) == False:
-          self.save_message("WARNING","Preferences database not found! Please, check prefs.js")
+          self.log("WARNING","Preferences database not found! Please, check prefs.js")
           return
 
        firefox = 0
@@ -874,7 +899,7 @@ class Dumpzilla():
         # Saving extraction to main extraction list
         self.total_extraction["addons"] = addons_extraction_dict
         if addons_found == False:
-            self.save_message("WARNING","Addons database not found! Please, check file %s" % '|'.join(addons_sources))
+            self.log("WARNING","Addons database not found! Please, check file %s" % '|'.join(addons_sources))
 
     ###############################################################################################################
     ### ADDONS INFO                                                                                               #
@@ -931,12 +956,12 @@ class Dumpzilla():
                 addinfo_extraction_dict[filepath] = _extraction_list
 
                 if y == 0:
-                   self.save_message("INFO","The Addons-Info database " + a + " does not contain URLs or paths!")
+                   self.log("INFO", "The Addons-Info database " + a + " does not contain URLs or paths!")
 
        # Saving extraction to main extraction list
        self.total_extraction["addinfo"] = addinfo_extraction_dict
        if addinfo_found == False:
-          self.save_message("WARNING","Addons-Info database not found! Please, check file " + '|'.join(addinfo_sources))
+          self.log("WARNING","Addons-Info database not found! Please, check file " + '|'.join(addinfo_sources))
 
     ###############################################################################################################
     ### EXTENSIONS                                                                                                #
@@ -987,7 +1012,7 @@ class Dumpzilla():
 
                 except:
                    e = str(sys.exc_info()[0])
-                   self.save_message("ERROR","Can't process file " + a + ":" + e )
+                   self.log("ERROR","Can't process file " + a + ":" + e )
 
 
              if a.endswith(".sqlite") == True:
@@ -1018,7 +1043,7 @@ class Dumpzilla():
        # Saving extraction to main extraction list
        self.total_extraction["extensions"] = ext_extraction_dict
        if ext_found == False:
-          self.save_message("WARNING","Extensions database not found! Please, check file" + '|'.join(ext_sources))
+          self.log("WARNING","Extensions database not found! Please, check file" + '|'.join(ext_sources))
 
     ###############################################################################################################
     ### SEARCH ENGINES                                                                                            #
@@ -1057,7 +1082,7 @@ class Dumpzilla():
 
                 except TypeError:
                    e = str(sys.exc_info()[0])
-                   self.save_message("ERROR","Can't process file " + a + ":" + e )
+                   self.log("ERROR","Can't process file " + a + ":" + e )
 
              if a.endswith(".sqlite") == True:
                 # SQLITE
@@ -1080,7 +1105,7 @@ class Dumpzilla():
        # Saving extraction to main extraction list
        self.total_extraction["engines"] = se_extraction_dict
        if se_found == False:
-          self.save_message("WARNING","Search Engines database not found! Please, check file" + '|'.join(se_sources))
+          self.log("WARNING","Search Engines database not found! Please, check file" + '|'.join(se_sources))
 
     ###############################################################################################################
     ### DOWNLOADS                                                                                                 #
@@ -1092,7 +1117,7 @@ class Dumpzilla():
        bbdd = self.get_path_by_os(dir, 'downloads.sqlite')
 
        if path.isfile(bbdd) == False:
-          self.save_message("WARNING","Recent downloads database not found! Please, check file downloads.sqlite")
+          self.log("WARNING","Recent downloads database not found! Please, check file downloads.sqlite")
           return
 
        conn = sqlite3.connect(bbdd)
@@ -1136,7 +1161,7 @@ class Dumpzilla():
        bbdd = self.get_path_by_os(dir, 'places.sqlite')
 
        if path.isfile(bbdd) == False:
-          self.save_message("WARNING","History Downloads database not found! Please, check file places.sqlite")
+          self.log("WARNING","History Downloads database not found! Please, check file places.sqlite")
           return
 
        conn = sqlite3.connect(bbdd)
@@ -1181,7 +1206,7 @@ class Dumpzilla():
        bbdd = self.get_path_by_os(dir, 'content-prefs.sqlite')
 
        if path.isfile(bbdd) == False:
-          self.save_message("WARNING","Download Directories database not found! Please, check file content-prefs.sqlite")
+          self.log("WARNING","Download Directories database not found! Please, check file content-prefs.sqlite")
           return
 
        conn = sqlite3.connect(bbdd)
@@ -1239,7 +1264,7 @@ class Dumpzilla():
        bbdd = self.get_path_by_os(dir, 'formhistory.sqlite')
 
        if path.isfile(bbdd) == False:
-          self.save_message("WARNING","Forms database not found! Please, check file formhistory.sqlite")
+          self.log("WARNING","Forms database not found! Please, check file formhistory.sqlite")
           return
 
        conn = sqlite3.connect(bbdd)
@@ -1279,7 +1304,7 @@ class Dumpzilla():
        bbdd = self.get_path_by_os(dir, 'places.sqlite')
 
        if path.isfile(bbdd) == False:
-          self.save_message("WARNING","History database not found! Please, check file places.sqlite")
+          self.log("WARNING","History database not found! Please, check file places.sqlite")
           return
 
        conn = sqlite3.connect(bbdd)
@@ -1322,7 +1347,7 @@ class Dumpzilla():
        bbdd = self.get_path_by_os(dir, 'places.sqlite')
 
        if path.isfile(bbdd) == False:
-          self.save_message("WARNING","Bookmarks database not found! Please, check file places.sqlite")
+          self.log("WARNING","Bookmarks database not found! Please, check file places.sqlite")
           return
 
        conn = sqlite3.connect(bbdd)
@@ -1405,7 +1430,7 @@ class Dumpzilla():
        # Saving extraction to main extraction list
        self.total_extraction["offlinecache"] = offlinecache_extraction_dict
        if cache_found == False:
-          self.save_message("WARNING","Offline Cache database not found! Please check file OfflineCache/index.sqlite")
+          self.log("WARNING","Offline Cache database not found! Please check file OfflineCache/index.sqlite")
 
     ###############################################################################################################
     ### OFFLINE CACHE                                                                                             #
@@ -1419,7 +1444,7 @@ class Dumpzilla():
        try:
           import magic
        except:
-          self.save_message("ERROR","Failed to import magic module!")
+          self.log("ERROR","Failed to import magic module!")
           return
 
        # [Default, Windows 7]
@@ -1496,7 +1521,7 @@ class Dumpzilla():
                 try:
                    remove(directory+"\\index.sqlite")
                 except:
-                   self.save_message("WARNING","Failed to remove index.sqlite from "+directory)
+                   self.log("WARNING","Failed to remove index.sqlite from "+directory)
 
              else:
                 # Unix systems
@@ -1549,7 +1574,7 @@ class Dumpzilla():
                 try:
                    remove(directory+"/index.sqlite")
                 except:
-                   self.save_message("WARNING","Failed to remove index.sqlite from "+directory)
+                   self.log("WARNING","Failed to remove index.sqlite from "+directory)
 
              offlinecache_ext_extraction_dict[d] = _extraction_list
 
@@ -1599,7 +1624,7 @@ class Dumpzilla():
        # Saving extraction to main extraction list
        self.total_extraction["thumbnails"] = thumbnails_extraction_dict
        if thumbnails_found == False:
-          self.save_message("WARNING","No thumbnails found!")
+          self.log("WARNING","No thumbnails found!")
 
     ###############################################################################################################
     ### CERT OVERRIDE                                                                                             #
@@ -1626,7 +1651,7 @@ class Dumpzilla():
 
             cert_override_extraction_dict[bbdd] = _extraction_list
         else:
-            self.save_message("WARNING","Cert override file not found! Please, check file cert_override.txt")
+            self.log("WARNING","Cert override file not found! Please, check file cert_override.txt")
 
         self.total_extraction["cert_override"] = cert_override_extraction_dict
 
@@ -1637,7 +1662,7 @@ class Dumpzilla():
     def show_watch(self,dir,watch_text = 1):
        sw_py_path = self.PYTHON3_PATH
        if sys.platform.startswith('win') == True:
-          self.save_message("ERROR","--Watch option not supported on Windows!")
+          self.log("CRITICAL","--Watch option not supported on Windows!")
           return
        elif sw_py_path == '':
           sw_py_path = self.get_user_value('Python 3 path (Press Enter for default - ' + self.PYTHON3_DEF + '): ').strip() # Python 3.x path (NO Windows). Example: /usr/bin/python3.4
@@ -1645,7 +1670,7 @@ class Dumpzilla():
             sw_py_path = self.PYTHON3_DEF
 
        if not path.isfile(sw_py_path):
-           self.save_message("ERROR","Python path '" + sw_py_path + "' is not a valid file path.")
+           self.log("CRITICAL","Python path '" + sw_py_path + "' is not a valid file path.")
            sys.exit(1)
 
        elif watch_text == 1:
@@ -1661,7 +1686,7 @@ class Dumpzilla():
           rparam = sys.argv[num]
           return rparam
        except:
-          self.save_message("ERROR","Missing argument for parameter " + arg)
+          self.log("CRITICAL","Missing argument for parameter " + arg)
           self.show_help()
 
     ###############################################################################################################
@@ -1693,7 +1718,6 @@ class Dumpzilla():
           if path.isfile(bbdd) == True:
              session_found = True
              f = open(bbdd)
-             hashsession = self.show_sha256(bbdd)
              if a.endswith(".js") or a.endswith(".json"):
                 filesession = "js"
              else:
@@ -1701,20 +1725,20 @@ class Dumpzilla():
              jdata = json.loads(f.read())
              f.close()
 
-             _extraction_list = self.extract_data_session(jdata,filesession,hashsession,bbdd)
+             _extraction_list = self.extract_data_session(jdata,filesession)
 
              session_extraction_dict[bbdd] = _extraction_list
 
        # Saving extraction to main extraction list
        self.total_extraction["session"] = session_extraction_dict
        if not session_found:
-          self.save_message("WARNING","No session info found!")
+          self.log("WARNING","No session info found!")
 
     ###############################################################################################################
     ### DATA SESSION                                                                                              #
     ###############################################################################################################
 
-    def extract_data_session(self,jdata,filesession,hashsession,namesession):
+    def extract_data_session(self,jdata,filesession):
 
        if filesession == "js":
           tipo = "Last session"
@@ -1798,7 +1822,6 @@ class Dumpzilla():
        # Showing last updated session data
        if session_watch_found == True:
           f = open(higher_source)
-          hashsession = self.show_sha256(higher_source)
           jdata = json.loads(f.read())
           f.close()
           count = 0
@@ -1864,17 +1887,19 @@ Options:
  --Cookies [-showdom] [-domain <string>] [-name <string>] [-hostcookie <string>] [-access <date>] [-create <date>]
            [-secure <0|1>] [-httponly <0|1>] [-last_range <start> <end>] [-create_range <start> <end>]
  --Downloads [-range <start> <end>]
+ --Export <directory> (export data as json)
  --Forms [-value <string>] [-forms_range <start> <end>]
  --Help (shows this help message and exit)
  --History [-url <string>] [-title <string>] [-date <date>] [-history_range <start> <end>] [-frequency]
  --OfflineCache [-cache_range <start> <end> -extract <directory>]
  --Preferences
  --Passwords (password decoding only works on Unix)
- --Permissions [-host <string>]  [-modif <date>] [-modif_range <start> <end>]
- --RegExp (uses Regular Expresions for string type filters instead of Wildcards)
+ --Permissions [-host <string>] [-modif <date>] [-modif_range <start> <end>]
+ --RegExp (use Regular Expresions for string type filters instead of Wildcards)
  --Session
- --Summary (no data extraction,  only summary report)
+ --Summary (no data extraction, only summary report)
  --Thumbnails [-extract_thumb <directory>]
+ --Verbosity (DEBUG|INFO|WARNING|ERROR|CRITICAL)
  --Watch [-text <string>] (shows in daemon mode the URLs and text form in real time; Unix only)
 
 Wildcards (without RegExp option):
@@ -1899,8 +1924,16 @@ Profile location:
     ### MAIN                                                                                                      #
     ##                                                                                                            #
     ###############################################################################################################
+    # Custom logger class with multiple destinations
     def __init__(self, argv):
-        self.has_colours = self.has_colours(sys.stdout)
+
+        # Log Levels
+        self.logger = logging.getLogger()
+        self.logger.setLevel(logging.WARNING)
+        self.verbosity_level = "WARNING";
+        self.log('DEBUG', 'Initialization')
+
+        # Argparse init
         parser = argparse.ArgumentParser(usage=self.get_help_msg(), add_help=False)
         parser.add_argument('filename')
         is_all_ok = False
@@ -2036,6 +2069,16 @@ Profile location:
         #...........................................
         parser.add_argument("--Session", action="store_true", default=False,  dest='is_session_ok', help="")
         #...........................................
+        #... Export parameters
+        #...........................................
+        parser.add_argument("--Export" , nargs=1,
+                  help="[--Export <directory>]")
+        #...........................................
+        #... Verbosity parameters
+        #...........................................
+        parser.add_argument("--Verbosity" , nargs=1,
+                  help="[--Verbosity LEVEL]")
+        #...........................................
         #... Live session parameters (watch)
         #...........................................
         parser.add_argument("--Live", action="store_true", default=False,  dest='is_live_ok', help="")
@@ -2047,12 +2090,12 @@ Profile location:
         parser.add_argument("-text", nargs=1,
                   help="[-text <string>] (-text Option allow filter, supports all grep Wildcards. Exit: Ctrl + C. only Unix)")
 
-
         self.args = parser.parse_args()
 
         #...........................................
         #...........................................
         dir = format(self.args.filename)
+        self.log('DEBUG', 'dir: '+ dir)
 
         if path.isdir(dir) and len(argv) >= 2:
 
@@ -2168,6 +2211,21 @@ Profile location:
                  if self.args.extract_thumb:
                      thumb_directory = format(self.args.extract_thumb[0])
 
+            if self.args.Verbosity:
+                level = self.args.Verbosity[0];
+                self.verbosity_level = level;
+                if level == 'DEBUG':
+                    self.logger.setLevel(logging.DEBUG)
+                elif level == 'INFO':
+                    self.logger.setLevel(logging.INFO)
+                elif level == 'WARNING':
+                    self.logger.setLevel(logging.WARNING)
+                elif level == 'ERROR':
+                    self.logger.setLevel(logging.ERROR)
+                elif level == 'CRITICAL':
+                    self.logger.setLevel(logging.CRITICAL)
+                else:
+                    self.verbosity_level = 'WARNING';
 
             if self.args.is_watch_ok:
                  if self.args.text:
@@ -2186,7 +2244,7 @@ Profile location:
             if self.args.is_regexp_ok:
                 self.query_str_f = "REGEXP"
                 self.query_str_a = ""
-                self.save_message("INFO","Using Regular Expression mode for string type filters")
+                self.log("INFO", "Using Regular Expression mode for string type filters")
             else:
                 self.query_str_f = "like"
                 self.query_str_a = "escape '\\'"
@@ -2247,7 +2305,7 @@ Profile location:
                 self.show_watch(dir,self.watch_text)
                 anyexec = True
             if not anyexec:
-                if (len(argv) == 2) or (len(argv) == 3 and self.args.is_summary_ok):
+                if (len(argv) == 2) or (len(argv) > 2 and (self.args.is_summary_ok or self.args.Export)):
                     self.All_execute(dir)
 
             ###############
@@ -2280,14 +2338,39 @@ Profile location:
                    "cert_override"       : "Cert override        ",
                    "session"             : "Sessions             "
                 }
+                extraction_id = os.path.basename(dir) + '.' + time.strftime("%Y%m%d%H%M%S")
+                export_folder = None
 
+                if self.args.Export:
+                    export_folder = self.args.Export[0] + '/' + extraction_id + '/'
+                    self.log("INFO","Output folder: "+ self.args.Export[0])
+                    if not os.path.exists(export_folder):
+                        self.log("INFO","Creating folder: " + export_folder)
+                        try:
+                            makedirs(export_folder)
+                        except:
+                            self.log('CRITICAL', 'Can\'t create folder: ' + export_folder)
+                            sys.exit(2)
+
+                self.log('DEBUG', 'total_extraction length: ' + str(len(self.total_extraction.keys())))
                 info_headers = sorted(self.total_extraction.keys())
                 summary = {}
                 for header in info_headers:
+                    self.log('DEBUG', 'header: ' + header)
                     sources = self.total_extraction[header].keys()
+
+                    if self.args.Export:
+                        outputFilename = header + '.json';
+                        for source in sources:
+                            self.log("INFO","Saving " + os.path.basename(source) + " data to "+  outputFilename)
+                        with open(export_folder + outputFilename, 'w') as fp:
+                            json.dump(self.total_extraction[header], fp)
+                        self.export_sha256(export_folder, header, sources);
+
                     for source in sources:
+
                         # INFO HEADER BY SOURCE
-                        if not self.args.is_summary_ok:
+                        if not self.args.is_summary_ok and  not self.args.Export:
                             if path.isfile(source):
                                 self.show_title(titles[header] +self.show_sha256(source), 302)
                             else:
@@ -2298,37 +2381,37 @@ Profile location:
                         else:
                             summary[header] = len(self.total_extraction[header][source])
 
-                        if summary[header] > 0:
-                            for i in self.total_extraction[header][source]:
-                                tags = sorted(i.keys())
-                                for tag in tags:
-                                    if not self.args.is_summary_ok:
+                        if not self.args.Export and  not self.args.is_summary_ok:
+                            if summary[header] > 0:
+                                for i in self.total_extraction[header][source]:
+                                    tags = sorted(i.keys())
+                                    for tag in tags:
                                         if i[tag]:
                                             print(tag.split('-',1)[1] + ": " + str(i[tag]))
                                         else:
                                             print(tag.split('-',1)[1] + ": ")
-                                if not self.args.is_summary_ok:
                                     print("")
-                        else:
-                            if not self.args.is_summary_ok:
+                            else:
                                 print("No data found!")
-                            summary[header] = 0
-
+                                summary[header] = 0
+                self.log("DEBUG", "summary " + str(len(summary.keys())))
                 info_headers = sorted(summary.keys())
 
                 if len(info_headers) == 0 and len(argv) == 2:
                      self.show_title("Total Information", 243)
                      print("No data found!")
                 elif len(info_headers) == 0:
-                     self.save_message("ERROR","Missing argument!")
-                     self.show_help()
+                     self.log("CRITICAL","Missing argument!")
+                     if self.args.Export and export_folder:
+                        os.rmdir(export_folder)
+                     #self.show_help()
                 else:
                      self.show_title("Total Information", 243)
                      for header in info_headers:
                         print("Total " + titles[header] + ": " + str(summary[header]))
                 print("")
         else:
-            self.save_message("ERROR","Failed to read profile directory: " + dir)
+            self.log("CRITICAL","Failed to read profile directory: " + dir)
             self.show_help()
             sys.exit()
 
