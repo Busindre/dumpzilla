@@ -1586,7 +1586,7 @@ class Dumpzilla():
     ### THUMBNAILS                                                                                                #
     ###############################################################################################################
 
-    def show_thumbnails(self,dir, directory = "null"):
+    def show_thumbnails(self,dir, directory = None):
        thumbnails_found = False
        thumbnails_extraction_dict = {}
 
@@ -1609,14 +1609,21 @@ class Dumpzilla():
              for dirname, dirnames, filenames in walk(d):
                 for filename in filenames:
                    _extraction_dict = {}
-                   if directory == 'null':
+                   if directory == None:
                         nfile = self.get_path_by_os(dirname, filename)
                         _extraction_dict['0-File'] = nfile
                    else:
                         nfile = self.get_path_by_os(dirname, filename)
                         if not path.exists(directory):
-                           makedirs(directory)
-                        shutil.copy2(nfile, directory)
+                           try:
+                               makedirs(directory)
+                           except:
+                               self.log('ERROR', 'Can\'t create thumbnails folder: ' + directory)
+                               return
+                        try:
+                            shutil.copy2(nfile, directory)
+                        except:
+                            self.log('ERROR', 'Can\'t copy thumbnail: ' + nfile)
                         _extraction_dict['0-File'] = "Copy "+nfile+" to "+directory
                    if len(_extraction_dict) > 0:
                       _extraction_list.append(_extraction_dict)
@@ -2245,6 +2252,8 @@ Profile location:
             if self.args.is_thump_ok:
                  if self.args.extract_thumb:
                      thumb_directory = format(self.args.extract_thumb[0])
+                 else:
+                     thumb_directory = None
 
             if self.args.Verbosity:
                 level = self.args.Verbosity[0];
