@@ -15,6 +15,7 @@ import argparse
 
 class Dumpzilla():
     ########################################### GLOBAL VARIABLES ##################################################
+    VERSION='v20161106'
 
     magicpath = 'C:\WINDOWS\system32\magic' # Only in Windows, path to magic file (Read Manual in www.dumpzilla.org)
 
@@ -1869,15 +1870,15 @@ class Dumpzilla():
          +mNdysoooooohdydM-
            /hmhsoooooyyNMh            Dumpzilla Forensic Tool
              `/shddhhmNMM-               www.dumpzilla.org
-                  `-:////.                   v20161024
+                  `-:////.                   %s
 
 Usage:
 
- """
+ """  % (self.VERSION)
         print(logo + self.get_help_msg())
 
     def get_help_msg(self):
-       return format("""python dumpzilla.py PROFILE_DIR [OPTIONS]
+       return format("""python3 dumpzilla.py PROFILE_DIR [OPTIONS]
 
 Options:
 
