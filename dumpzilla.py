@@ -255,7 +255,7 @@ class Dumpzilla():
        sqlite_param = []
        cnt = 0
        for filter in filters:
-          if cnt == 0 and not sqlite_query.find('where'):
+          if cnt == 0 and sqlite_query.find('where') == -1:
              sqlite_query = sqlite_query + " where ("
           else:
              sqlite_query = sqlite_query + " and ("
@@ -2405,7 +2405,7 @@ Profile location:
                             else:
                                 print("No data found!")
                                 summary[header] = 0
-                self.log("DEBUG", "summary " + str(len(summary.keys())))
+                self.log("DEBUG", "summary length: " + str(len(summary.keys())))
                 info_headers = sorted(summary.keys())
 
                 if len(info_headers) == 0 and len(argv) == 2:
