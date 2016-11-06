@@ -210,16 +210,17 @@ class Dumpzilla():
        return dir+delimiter+cd_dir+file
 
     def decode_reg(self, reg):
-       try:
-          if type(reg) is int or type(reg) is str:
-             return reg
-          elif reg is None:
-             return None
-          else:
-             return reg.decode()
-       except UnicodeDecodeError:
-          self.log("ERROR","UnicodeDecodeError : "+str(sys.exc_info()[1]))
-          return None
+        try:
+            if type(reg) is int or type(reg) is str:
+                return reg
+            elif reg is None:
+                return None
+            else:
+                return reg.decode()
+        except UnicodeDecodeError:
+            #self.log("ERROR","UnicodeDecodeError : "+str(sys.exc_info()[1]))
+            #return None
+            return reg.decode('utf-8')
 
     def show_info_header(self,profile):
         if sys.version.startswith('2.') == True:
@@ -1878,7 +1879,7 @@ Usage:
         print(logo + self.get_help_msg())
 
     def get_help_msg(self):
-       return format("""python3 dumpzilla.py PROFILE_DIR [OPTIONS]
+       return format("""python dumpzilla.py PROFILE_DIR [OPTIONS]
 
 Options:
 
@@ -2388,7 +2389,10 @@ Profile location:
                                     tags = sorted(i.keys())
                                     for tag in tags:
                                         if i[tag]:
-                                            print(tag.split('-',1)[1] + ": " + str(i[tag]))
+                                            try:
+                                                print(tag.split('-',1)[1] + ": " + str(i[tag]))
+                                            except UnicodeEncodeError:
+                                                print(tag.split('-',1)[1] + ": " + str(i[tag].encode('utf8')))
                                         else:
                                             print(tag.split('-',1)[1] + ": ")
                                     print("")
