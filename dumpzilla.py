@@ -255,7 +255,7 @@ class Dumpzilla():
        sqlite_param = []
        cnt = 0
        for filter in filters:
-          if cnt == 0:
+          if cnt == 0 and not sqlite_query.find('where'):
              sqlite_query = sqlite_query + " where ("
           else:
              sqlite_query = sqlite_query + " and ("
@@ -286,7 +286,7 @@ class Dumpzilla():
           sqlite_query = sqlite_query + " " + orderby
 
        ### print("%s - %s" % (sqlite_query,sqlite_param))
-
+       self.log('DEBUG', 'Execute query: ' + sqlite_query)
        cursor.execute(sqlite_query,sqlite_param)
 
     ###############################################################################################################
@@ -1359,7 +1359,7 @@ class Dumpzilla():
           conn.create_function("REGEXP", 2, self.regexp)
 
        cursor = conn.cursor()
-       sqlite_query = 'select bm.title,pl.url,datetime(bm.dateAdded/1000000,"unixepoch","localtime"),datetime(bm.lastModified/1000000,"unixepoch","localtime") as last from moz_places pl,moz_bookmarks bm where pl.id = bm.id'
+       sqlite_query = 'select bm.title,pl.url,datetime(bm.dateAdded/1000000,"unixepoch","localtime") as create_date,datetime(bm.lastModified/1000000,"unixepoch","localtime") as last from moz_places pl,moz_bookmarks bm where pl.id = bm.id'
        self.execute_query(cursor,sqlite_query,self.bookmarks_filters)
 
        _extraction_list = []
@@ -1884,7 +1884,7 @@ Usage:
 Options:
 
  --Addons
- --Bookmarks [-bookmarks_range <start> <end>]
+ --Bookmarks [-bm_create_range <start> <end>][-bm_last_range <start> <end>]
  --Certoverride
  --Cookies [-showdom] [-domain <string>] [-name <string>] [-hostcookie <string>] [-access <date>] [-create <date>]
            [-secure <0|1>] [-httponly <0|1>] [-last_range <start> <end>] [-create_range <start> <end>]
@@ -1937,7 +1937,7 @@ Profile location:
 
         # Argparse init
         parser = argparse.ArgumentParser(usage=self.get_help_msg(), add_help=False)
-        parser.add_argument('filename')
+        parser.add_argument('PROFILE_DIR')
         is_all_ok = False
         if len(argv) == 2:
             is_all_ok = True
@@ -2037,9 +2037,11 @@ Profile location:
         #... Bookmarks parameters
         #...........................................
         parser.add_argument("--Bookmarks", action="store_true", default=is_all_ok,  dest='is_bookmarks_ok',
-                  help="--Bookmarks [-bookmarks_range <start> <end>]")
-        parser.add_argument("-bookmarks_range", nargs=2,
-                  help="[-bookmarks_range <start> <end>]")
+                  help="--Bookmarks [-bm_create_range <start> <end>][-bm_last_range <start> <end>]")
+        parser.add_argument("-bm_create_range", nargs=2,
+                  help="[-bm_create_range <start> <end>]")
+        parser.add_argument("-bm_last_range", nargs=2,
+                  help="[-bm_last_range <start> <end>]")
         #...........................................
         #... Passwords parameters
         #...........................................
@@ -2096,7 +2098,7 @@ Profile location:
 
         #...........................................
         #...........................................
-        dir = format(self.args.filename)
+        dir = format(self.args.PROFILE_DIR)
         self.log('DEBUG', 'dir: '+ dir)
 
         if path.isdir(dir) and len(argv) >= 2:
@@ -2193,10 +2195,14 @@ Profile location:
 
 
             if self.args.is_bookmarks_ok:
-                 if self.args.bookmarks_range:
-                     bookmarks_range1 = self.validate_date(format(self.args.bookmarks_range[0]))
-                     bookmarks_range2 = self.validate_date(format(self.args.bookmarks_range[1]))
-                     self.bookmarks_filters.append(["range","last",[bookmarks_range1,bookmarks_range2]])
+                if self.args.bm_last_range:
+                    bm_last_range1 = self.validate_date(format(self.args.bm_last_range[0]))
+                    bm_last_range2 = self.validate_date(format(self.args.bm_last_range[1]))
+                    self.bookmarks_filters.append(["range","last",[bm_last_range1,bm_last_range2]])
+                if self.args.bm_create_range:
+                    bm_create_range1 = self.validate_date(format(self.args.bm_create_range[0]))
+                    bm_create_range2 = self.validate_date(format(self.args.bm_create_range[1]))
+                    self.bookmarks_filters.append(["range","create_date",[bm_create_range1,bm_create_range2]])
 
 
             if self.args.is_cacheoff_ok:
