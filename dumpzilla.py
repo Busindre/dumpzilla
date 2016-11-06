@@ -517,7 +517,7 @@ class Dumpzilla():
                         passwords_extraction_dict[bbdd] = _extraction_list
                     except:
                        e = str(sys.exc_info()[0])
-                       self.log("ERROR","Can't process file " + a + ":" + e )
+                       self.log("ERROR","Passwords database: can't process file " + a + ":" + e )
 
                     cursor.close()
                     conn.close()
@@ -1014,7 +1014,7 @@ class Dumpzilla():
 
                 except:
                    e = str(sys.exc_info()[0])
-                   self.log("ERROR","Can't process file " + a + ":" + e )
+                   self.log("ERROR","Extensions database: can't process file " + a + ":" + e )
 
 
              if a.endswith(".sqlite") == True:
@@ -1084,7 +1084,7 @@ class Dumpzilla():
 
                 except TypeError:
                    e = str(sys.exc_info()[0])
-                   self.log("ERROR","Can't process file " + a + ":" + e )
+                   self.log("ERROR","Search Engines database: can't process file " + a + ":" + e )
 
              if a.endswith(".sqlite") == True:
                 # SQLITE
@@ -1975,9 +1975,9 @@ Profile location:
                   help="[-secure <0/1>]")
         parser.add_argument("-httponly", nargs=1, type=int,
                   help="[-httponly <0/1>]")
-        parser.add_argument("-last_range", nargs=2,
+        parser.add_argument("-last_range", nargs='+',
                   help="[-last_range <start> <end>]")
-        parser.add_argument("-create_range", nargs=2,
+        parser.add_argument("-create_range", nargs='+',
                   help="[-create_range <start> <end>]")
         #...........................................
         #... Permissions parameters
@@ -1990,7 +1990,7 @@ Profile location:
                   help="[-type <string>]")
         parser.add_argument("-modif", nargs=1,
                   help="[-modif <date>")
-        parser.add_argument("-modif_range", nargs=2,
+        parser.add_argument("-modif_range", nargs='+',
                 help="[-modif_range <start> <end>]")
         #...........................................
         #... Preferences parameters
@@ -2007,7 +2007,7 @@ Profile location:
         #...........................................
         parser.add_argument("--Downloads", action="store_true", default=is_all_ok,  dest='is_downloads_ok',
                   help="--Downloads [-range <start> <end>]")
-        parser.add_argument("-range", nargs=2,
+        parser.add_argument("-range", nargs=1,
                   help="[-range <start> <end>]")
         #...........................................
         #... Forms parameters
@@ -2016,7 +2016,7 @@ Profile location:
                   help="--Forms [-value <string> -forms_range <start> <end>]")
         parser.add_argument("-value", nargs=1,
                   help="[-value <string>]")
-        parser.add_argument("-forms_range", nargs=2,
+        parser.add_argument("-forms_range", nargs='+',
                   help="[-forms_range <start> <end>]")
         #...........................................
         #... History parameters
@@ -2031,16 +2031,16 @@ Profile location:
                   help="[-title <string>]")
         parser.add_argument("-date", nargs=1,
                   help="[-date <date>]")
-        parser.add_argument("-history_range", nargs=2,
+        parser.add_argument("-history_range", nargs='+',
                   help="[-history_range <start> <end>]")
         #...........................................
         #... Bookmarks parameters
         #...........................................
         parser.add_argument("--Bookmarks", action="store_true", default=is_all_ok,  dest='is_bookmarks_ok',
                   help="--Bookmarks [-bm_create_range <start> <end>][-bm_last_range <start> <end>]")
-        parser.add_argument("-bm_create_range", nargs=2,
+        parser.add_argument("-bm_create_range", nargs='+',
                   help="[-bm_create_range <start> <end>]")
-        parser.add_argument("-bm_last_range", nargs=2,
+        parser.add_argument("-bm_last_range", nargs='+',
                   help="[-bm_last_range <start> <end>]")
         #...........................................
         #... Passwords parameters
@@ -2052,7 +2052,7 @@ Profile location:
         #...........................................
         parser.add_argument("--OfflineCache", action="store_true", default=is_all_ok,  dest='is_cacheoff_ok',
                   help="--OfflineCache [-cache_range <start> <end> -extract <directory>]")
-        parser.add_argument("-cache_range", nargs=2,
+        parser.add_argument("-cache_range", nargs='+',
                   help="[-cache_range <start> <end>]")
         parser.add_argument("-extract", nargs=1,
                   help="[-extract <directory>]")
@@ -2136,11 +2136,17 @@ Profile location:
                      self.cookie_filters.append(["number","isHttpOnly",cookie_httponly])
                  if self.args.last_range:
                      cookie_access_range1 = self.validate_date(format(self.args.last_range[0]))
-                     cookie_access_range2 = self.validate_date(format(self.args.last_range[1]))
+                     try:
+                         cookie_access_range2 = self.validate_date(format(self.args.last_range[1]))
+                     except IndexError:
+                         cookie_access_range2 = self.validate_date(format('9999-12-31'))
                      self.cookie_filters.append(["range","last",[cookie_access_range1,cookie_access_range2]])
                  if self.args.create_range:
                      cookie_create_range1 = self.validate_date(format(self.args.create_range[0]))
-                     cookie_create_range2 = self.validate_date(format(self.args.create_range[1]))
+                     try:
+                         cookie_create_range2 = self.validate_date(format(self.args.create_range[1]))
+                     except IndexError:
+                         cookie_create_range2 = self.validate_date(format('9999-12-31'))
                      self.cookie_filters.append(["range","creat",[cookie_create_range1,cookie_create_range2]])
 
 
@@ -2156,14 +2162,20 @@ Profile location:
                      self.permissions_filters.append(["date","modif",permissions_modif_date])
                  if self.args.modif_range:
                      permissions_modif_range1 = self.validate_date(format(self.args.modif_range[0]))
-                     permissions_modif_range2 = self.validate_date(format(self.args.modif_range[1]))
+                     try:
+                         permissions_modif_range2 = self.validate_date(format(self.args.modif_range[1]))
+                     except IndexError:
+                         permissions_modif_range2 = self.validate_date(format('9999-12-31'))
                      self.permissions_filters.append(["range","modif",[permissions_modif_range1,permissions_modif_range2]])
 
 
             if self.args.is_downloads_ok:
                  if self.args.range:
                      downloads_range1 = self.validate_date(format(self.args.range[0]))
-                     downloads_range2 = self.validate_date(format(self.args.range[1]))
+                     try:
+                         downloads_range2 = self.validate_date(format(self.args.range[1]))
+                     except IndexError:
+                         downloads_range2 = self.validate_date(format('9999-12-31'))
                      self.downloads_filters.append(["range","start",[downloads_range1,downloads_range2]])
                      self.downloads_history_filters.append(["range","modified",[downloads_range1,downloads_range2]])
 
@@ -2174,7 +2186,10 @@ Profile location:
                      self.forms_filters.append(["string","value",forms_value])
                  if self.args.forms_range:
                      forms_range1 = self.validate_date(format(self.args.forms_range[0]))
-                     forms_range2 = self.validate_date(format(self.args.forms_range[1]))
+                     try:
+                         forms_range2 = self.validate_date(format(self.args.forms_range[1]))
+                     except IndexError:
+                         forms_range2 = self.validate_date(format('9999-12-31'))
                      self.forms_filters.append(["range","last",[forms_range1,forms_range2]])
 
 
@@ -2190,25 +2205,37 @@ Profile location:
                      self.history_filters.append(["date","last",history_date])
                  if self.args.history_range:
                      history_range1 = self.validate_date(format(self.args.history_range[0]))
-                     history_range2 = self.validate_date(format(self.args.history_range[1]))
+                     try:
+                         history_range2 = self.validate_date(format(self.args.history_range[1]))
+                     except IndexError:
+                         history_range2 = self.validate_date(format('9999-12-31'))
                      self.history_filters.append(["range","last",[history_range1,history_range2]])
 
 
             if self.args.is_bookmarks_ok:
                 if self.args.bm_last_range:
                     bm_last_range1 = self.validate_date(format(self.args.bm_last_range[0]))
-                    bm_last_range2 = self.validate_date(format(self.args.bm_last_range[1]))
+                    try:
+                        bm_last_range2 = self.validate_date(format(self.args.bm_last_range[1]))
+                    except IndexError:
+                        bm_last_range2 = self.validate_date(format('9999-12-31'))
                     self.bookmarks_filters.append(["range","last",[bm_last_range1,bm_last_range2]])
                 if self.args.bm_create_range:
                     bm_create_range1 = self.validate_date(format(self.args.bm_create_range[0]))
-                    bm_create_range2 = self.validate_date(format(self.args.bm_create_range[1]))
+                    try:
+                        bm_create_range2 = self.validate_date(format(self.args.bm_create_range[1]))
+                    except IndexError:
+                        bm_create_range2 = self.validate_date(format('9999-12-31'))
                     self.bookmarks_filters.append(["range","create_date",[bm_create_range1,bm_create_range2]])
 
 
             if self.args.is_cacheoff_ok:
                  if self.args.cache_range:
                      cacheoff_range1 = self.validate_date(format(self.args.cache_range[0]))
-                     cacheoff_range2 = self.validate_date(format(self.args.cache_range[1]))
+                     try:
+                         cacheoff_range2 = self.validate_date(format(self.args.cache_range[1]))
+                     except IndexError:
+                         cacheoff_range2 = self.validate_date(format('9999-12-31'))
                      self.cacheoff_filters.append(["range","last",[cacheoff_range1,cacheoff_range2]])
                  if self.args.extract:
                      self.is_cacheoff_extract_ok = True
