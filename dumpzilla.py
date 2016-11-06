@@ -1130,7 +1130,7 @@ class Dumpzilla():
 
        cursor = conn.cursor()
        sqlite_query = "select name,mimeType,maxBytes/1024,source,target,referrer,tempPath, datetime(startTime/1000000,'unixepoch','localtime') as start,datetime(endTime/1000000,'unixepoch','localtime') as end,state,preferredApplication,preferredAction from moz_downloads"
-       self.execute_query(cursor,sqlite_query,downloads_filters)
+       self.execute_query(cursor, sqlite_query ,self.downloads_filters)
 
        _extraction_list = []
        for row in cursor:
