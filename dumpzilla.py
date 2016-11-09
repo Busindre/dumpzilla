@@ -1833,6 +1833,8 @@ Wildcards: '%'  Any string of any length (Including zero length)
            '_'  Single character
            '\\'  Escape character
 
+Regular Expresions: https://docs.python.org/3/library/re.html
+
 Date syntax: YYYY-MM-DD hh:mi:ss (Wildcards allowed)
 
 Profile:       
