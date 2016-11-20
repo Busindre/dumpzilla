@@ -481,12 +481,12 @@ class Dumpzilla():
                 elif a.endswith(".sqlite"):
                     # SQLITE
 
-                    ### Exceptions
                     conn = sqlite3.connect(bbdd)
                     conn.text_factory = bytes
                     cursor = conn.cursor()
 
                     try:
+                        ### Exceptions
                         cursor.execute('select hostname from moz_disabledHosts')
                         _extraction_list = []
                         for row in cursor:
@@ -494,24 +494,25 @@ class Dumpzilla():
                             _extraction_dict['0-Exception Web'] = self.decode_reg(row[0])
                             _extraction_list.append(_extraction_dict)
 
-                            exception_extraction_dict[bbdd] = _extraction_list
+                        exception_extraction_dict[bbdd] = _extraction_list
 
-                            ### Passwords
-                            cursor.execute('select formSubMitURL,usernameField,passwordField ,encryptedUsername,encryptedPassword,encType,datetime(timeCreated/1000,"unixepoch","localtime"),datetime(timeLastUsed/1000,"unixepoch","localtime"),datetime(timePasswordChanged/1000,"unixepoch","localtime"),timesUsed FROM moz_logins')
-                            _extraction_list = []
-                            for row in cursor:
-                                _extraction_dict = {}
-                                _extraction_dict['0-Web'] = self.decode_reg(row[0])
-                                _extraction_dict['1-User field'] = self.decode_reg(row[1])
-                                _extraction_dict['2-Password field'] = self.decode_reg(row[2])
-                                _extraction_dict['3-User login (crypted)'] = self.decode_reg(row[3])
-                                _extraction_dict['4-Password login (crypted)'] = self.decode_reg(row[4])
-                                #_extraction_dict['99-Encripton type'] = self.decode_reg(row[5])
-                                _extraction_dict['5-Created'] = self.decode_reg(row[6])
-                                _extraction_dict['6-Last used'] = self.decode_reg(row[7])
-                                _extraction_dict['7-Change'] = self.decode_reg(row[8])
-                                _extraction_dict['8-Frequency'] = self.decode_reg(row[9])
-
+                        ### Passwords
+                        cursor.execute('select formSubMitURL,usernameField,passwordField ,encryptedUsername,encryptedPassword,encType,\
+                                        datetime(timeCreated/1000,"unixepoch","localtime"),datetime(timeLastUsed/1000,"unixepoch","localtime"),\
+                                        datetime(timePasswordChanged/1000,"unixepoch","localtime"),timesUsed FROM moz_logins')
+                        _extraction_list = []
+                        for row in cursor:
+                            _extraction_dict = {}
+                            _extraction_dict['0-Web'] = self.decode_reg(row[0])
+                            _extraction_dict['1-User field'] = self.decode_reg(row[1])
+                            _extraction_dict['2-Password field'] = self.decode_reg(row[2])
+                            _extraction_dict['3-User login (crypted)'] = self.decode_reg(row[3])
+                            _extraction_dict['4-Password login (crypted)'] = self.decode_reg(row[4])
+                            #_extraction_dict['99-Encripton type'] = self.decode_reg(row[5])
+                            _extraction_dict['5-Created'] = self.decode_reg(row[6])
+                            _extraction_dict['6-Last used'] = self.decode_reg(row[7])
+                            _extraction_dict['7-Change'] = self.decode_reg(row[8])
+                            _extraction_dict['8-Frequency'] = self.decode_reg(row[9])
                             _extraction_list.append(_extraction_dict)
 
                         passwords_extraction_dict[bbdd] = _extraction_list
