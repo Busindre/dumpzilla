@@ -9,13 +9,15 @@ _dumpzilla()
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    
+
+    # Files / Dirs completion
+    _filedir
+
     # All
     if [[ ${cur} == --* ]] ; then
         opts="--Addons --Bookmarks --Certoverride --Cookies --Downloads --Export --Forms --Help --History --OfflineCache --Preferences --Passwords --Permissions --RegExp --Session --Summary --Thumbnails --Verbosity --Watch"
         COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
         return 0
-     
     fi
 
     # Addons
@@ -41,7 +43,6 @@ _dumpzilla()
         opts="-showdom -domain -name -hostcookie -access -create -secure -httponly -last_range -create_range"
         COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
         return 0
-
     fi
 
     # Downloads
