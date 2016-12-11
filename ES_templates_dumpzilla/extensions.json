@@ -1,0 +1,74 @@
+{
+    "template" : "dumpzilla_extensions*",
+    "settings" : {
+      "index" : {
+        "refresh_interval" : "5s"
+      }
+    },
+    "mappings" : {
+      "_default_" : {
+        "dynamic_templates" : [ {
+          "message_field" : {
+            "mapping" : {
+              "index" : "analyzed",
+              "omit_norms" : true,
+              "type" : "string"
+            },
+            "match_mapping_type" : "string",
+            "match" : "message"
+          }
+        }, {
+          "string_fields" : {
+            "mapping" : {
+              "index" : "not_analyzed",
+              "type" : "string"
+            },
+            "match_mapping_type" : "string",
+            "match" : "*"
+          }
+        } ],
+        "properties" : {
+          "4-Version" : {
+             "index" : "not_analyzed",
+             "type" : "string"
+          },
+          "3-Descriptor" : {
+             "index" : "not_analyzed",
+             "type" : "string"
+          },
+	  "5-Release" : {
+	     "index" : "not_analyzed",
+             "type" : "string"
+	  },
+	  "2-Id" : {
+	     "index" : "not_analyzed",
+             "type" : "string"
+	   },
+	  "0-Name" : {
+	     "index" : "not_analyzed",
+	     "type" : "string"
+	   },      
+	  "1-Type" : {
+             "index" : "not_analyzed",
+             "type" : "string"
+          },
+	  "8-Active" : {
+	    "index" : "not_analyzed",
+            "type" : "string"
+	  },
+          "@version" : {
+            "index" : "not_analyzed",
+            "type" : "string"
+          },
+          "6-Install Date" : {
+            "format" : "yyy-MM-dd HH:mm:ss",
+            "type" : "date"
+          },
+          "7-Update Date" : {
+	     "format" : "yyy-MM-dd HH:mm:ss",
+	     "type" : "date"
+	  }
+        }
+      }
+    }
+}

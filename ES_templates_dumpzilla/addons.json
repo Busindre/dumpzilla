@@ -1,0 +1,54 @@
+{
+    "template" : "dumpzilla_addons*",
+    "settings" : {
+      "index" : {
+        "refresh_interval" : "5s"
+      }
+    },
+    "mappings" : {
+      "_default_" : {
+        "dynamic_templates" : [ {
+          "message_field" : {
+            "mapping" : {
+              "index" : "analyzed",
+              "omit_norms" : true,
+              "type" : "string"
+            },
+            "match_mapping_type" : "string",
+            "match" : "message"
+          }
+        }, {
+          "string_fields" : {
+            "mapping" : {
+              "index" : "not_analyzed",
+              "type" : "string"
+            },
+            "match_mapping_type" : "string",
+            "match" : "*"
+          }
+        } ],
+        "properties" : {
+          "3-Homepage URL" : {
+             "index" : "not_analyzed",
+             "type" : "string"
+          },
+          "2-Creator URL" : {
+             "index" : "not_analyzed",
+             "type" : "string"
+          },
+	  "0-Name" : {
+	     "index" : "not_analyzed",
+             "type" : "string"
+	  },
+	  "1-Version" : {
+	     "index" : "not_analyzed",
+             "type" : "string"
+	   },
+	   "@version" : {
+	     "index" : "not_analyzed",
+	     "type" : "string"
+	  }
+	 }
+      }
+    }
+}

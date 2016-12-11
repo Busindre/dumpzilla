@@ -1,0 +1,54 @@
+{
+    "template" : "dumpzilla_session*",
+    "settings" : {
+      "index" : {
+        "refresh_interval" : "5s"
+      }
+    },
+    "mappings" : {
+      "_default_" : {
+        "dynamic_templates" : [ {
+          "message_field" : {
+            "mapping" : {
+              "index" : "analyzed",
+              "omit_norms" : true,
+              "type" : "string"
+            },
+            "match_mapping_type" : "string",
+            "match" : "message"
+          }
+        }, {
+          "string_fields" : {
+            "mapping" : {
+              "index" : "not_analyzed",
+              "type" : "string"
+            },
+            "match_mapping_type" : "string",
+            "match" : "*"
+          }
+        } ],
+        "properties" : {
+          "02-Type" : {
+             "index" : "not_analyzed",
+             "type" : "string"
+          },
+          "03-Title" : {
+             "index" : "not_analyzed",
+             "type" : "string"
+          },
+	  "00-Session type" : {
+	     "index" : "not_analyzed",
+             "type" : "string"
+	  },
+	  "04-URL" : {
+	     "index" : "not_analyzed",
+             "type" : "string"
+	   },
+	  "01-Last update" : {
+	     "format" : "E MMM d HH:mm:ss yyyy||E MMM  d HH:mm:ss yyyy",
+	     "type" : "date"
+          }
+        }
+      }
+    }
+}

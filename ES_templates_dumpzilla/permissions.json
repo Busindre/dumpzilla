@@ -1,0 +1,50 @@
+{
+    "template" : "dumpzilla_permissisons*",
+    "settings" : {
+      "index" : {
+        "refresh_interval" : "5s"
+      }
+    },
+    "mappings" : {
+      "_default_" : {
+        "dynamic_templates" : [ {
+          "message_field" : {
+            "mapping" : {
+              "index" : "analyzed",
+              "omit_norms" : true,
+              "type" : "string"
+            },
+            "match_mapping_type" : "string",
+            "match" : "message"
+          }
+        }, {
+          "string_fields" : {
+            "mapping" : {
+              "index" : "not_analyzed",
+              "type" : "string"
+            },
+            "match_mapping_type" : "string",
+            "match" : "*"
+          }
+        } ],
+        "properties" : {
+          "1-Type" : {
+            "index" : "not_analyzed",
+            "type" : "string"
+          },
+	  "2-Permission" : {
+	     "index" : "not_analyzed",
+	     "type" : "integer"
+	  },
+          "@version" : {
+            "index" : "not_analyzed",
+            "type" : "string"
+          },
+	  "3-Expire Time" : {
+	     "index" : "not_analyzed",
+	     "type" : "string"
+	  }
+        }
+      }
+    }
+}
