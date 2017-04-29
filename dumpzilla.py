@@ -1948,9 +1948,10 @@ Date syntax:
 
 Profile location:
 
- WinXP profile -> 'C:\\Documents and Settings\\xx\\Application Data\\Mozilla\\Firefox\\Profiles\\xxxx.default'
- Win7 profile  -> 'C:\\Users\\xx\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\xxxx.default'
- Unix profile  -> '/home/xx/.mozilla/firefox/xxxx.default/'
+ WinXP profile -> 'C:\\Documents and Settings\\%USERNAME%\\Application Data\\Mozilla\\Firefox\\Profiles\\xxxx.default'
+ Win7 profile  -> 'C:\\Users\\%USERNAME%\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\xxxx.default'
+ MacOS profile -> '/Users/$USER/Library/Application\ Support/Firefox/Profiles/xxxx.default'
+ Unix profile  -> '/home/$USER/.mozilla/firefox/xxxx.default'
    """)
 
     ###############################################################################################################
