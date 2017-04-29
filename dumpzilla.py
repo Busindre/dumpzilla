@@ -451,7 +451,7 @@ class Dumpzilla():
     ### PASSWORDS
     ###############################################################################################################
 
-    def show_passwords_firefox(self,dir):
+    def show_passwords(self,dir):
         passwords_sources = ["signons.sqlite","logins.json"]
         passwords_extraction_dict = {}
         exception_extraction_dict = {}
@@ -556,20 +556,20 @@ class Dumpzilla():
     ###############################################################################################################
 
     def All_execute(self,dir):
-        self.show_cookies_firefox(dir)
-        self.show_permissions_firefox(dir)
-        self.show_preferences_firefox(dir)
-        self.show_addons_firefox(dir)
-        self.show_extensions_firefox(dir)
+        self.show_cookies(dir)
+        self.show_permissions(dir)
+        self.show_preferences(dir)
+        self.show_addons(dir)
+        self.show_extensions(dir)
         self.show_search_engines(dir)
         self.show_info_addons(dir)
-        self.show_downloads_firefox(dir)
-        self.show_downloads_history_firefox(dir)
-        self.show_downloadsdir_firefox(dir)
-        self.show_forms_firefox(dir)
-        self.show_history_firefox(dir)
-        self.show_bookmarks_firefox(dir)
-        self.show_passwords_firefox(dir)
+        self.show_downloads(dir)
+        self.show_downloads_history(dir)
+        self.show_downloadsdir(dir)
+        self.show_forms(dir)
+        self.show_history(dir)
+        self.show_bookmarks(dir)
+        self.show_passwords(dir)
         self.show_cache(dir)
         self.show_cert_override(dir)
         self.show_thumbnails(dir)
@@ -579,7 +579,7 @@ class Dumpzilla():
     ### COOKIES                                                                                                   #
     ###############################################################################################################
 
-    def show_cookies_firefox(self,dir):
+    def show_cookies(self,dir):
        cookies_extraction_dict = {}
        dom_extraction_dict = {}
 
@@ -682,7 +682,7 @@ class Dumpzilla():
     ### PERMISSIONS                                                                                               #
     ###############################################################################################################
 
-    def show_permissions_firefox(self,dir):
+    def show_permissions(self,dir):
        permissions_extraction_dict = {}
 
        bbdd = self.get_path_by_os(dir, 'permissions.sqlite')
@@ -746,18 +746,30 @@ class Dumpzilla():
           self.execute_query(cursor,sqlite_query,self.permissions_filters)
 
           for row in cursor:
-             _extraction_dict = {}
-             _extraction_dict['0-Host'] = self.decode_reg(row[0])
-             _extraction_dict['1-Type'] = self.decode_reg(row[1])
-             _extraction_dict['2-Permission'] = self.decode_reg(row[2])
-             if self.decode_reg(row[3]) == 0:
+            _extraction_dict = {}
+            _extraction_dict['0-Host'] = self.decode_reg(row[0])
+            _extraction_dict['1-Type'] = self.decode_reg(row[1])
+            permissionType = str( self.decode_reg(row[2]) )
+
+            # Permission
+            if permissionType == '1':
+                _extraction_dict['2-Permission'] = permissionType + " (allow)"
+            elif permissionType == '2':
+                _extraction_dict['2-Permission'] = permissionType + " (block)"
+            elif permissionType == '8':
+                _extraction_dict['2-Permission'] = permissionType + " (allow for session only)"
+            else:
+                _extraction_dict['2-Permission'] = permissionType
+
+            # Expire time
+            if self.decode_reg(row[3]) == 0:
                 _extraction_dict['3-Expire Time'] = 'Not expire'
-             else:
+            else:
                 _extraction_dict['3-Expire Time'] = self.decode_reg(row[4])
 
-             if modificationTime_found:
+            if modificationTime_found:
                 _extraction_dict['4-Modification Time'] = self.decode_reg(row[5])
-             _extraction_list.append(_extraction_dict)
+            _extraction_list.append(_extraction_dict)
           cursor.close()
 
        permissions_extraction_dict[bbdd] = _extraction_list
@@ -771,7 +783,7 @@ class Dumpzilla():
     ### PREFERENCES                                                                                               #
     ###############################################################################################################
 
-    def show_preferences_firefox(self,dir):
+    def show_preferences(self,dir):
        preferences_extraction_dict = {}
 
        dirprefs = self.get_path_by_os(dir, 'prefs.js')
@@ -864,7 +876,7 @@ class Dumpzilla():
     ### ADDONS                                                                                                    #
     ###############################################################################################################
 
-    def show_addons_firefox(self,dir):
+    def show_addons(self,dir):
         addons_extraction_dict = {}
         addons_found = False
         addons_sources = ["addons.sqlite","addons.json"]
@@ -985,7 +997,7 @@ class Dumpzilla():
     ### EXTENSIONS                                                                                                #
     ###############################################################################################################
 
-    def show_extensions_firefox(self,dir):
+    def show_extensions(self,dir):
        ext_extraction_dict = {}
        ext_found = False
        ext_sources = ["extensions.json","extensions.sqlite"]
@@ -1147,7 +1159,7 @@ class Dumpzilla():
     ### DOWNLOADS                                                                                                 #
     ###############################################################################################################
 
-    def show_downloads_firefox(self,dir):
+    def show_downloads(self,dir):
        downloads_extraction_dict = {}
 
        bbdd = self.get_path_by_os(dir, 'downloads.sqlite')
@@ -1191,7 +1203,7 @@ class Dumpzilla():
     ### DOWNLOADS HISTORY                                                                                         #
     ###############################################################################################################
 
-    def show_downloads_history_firefox(self,dir):
+    def show_downloads_history(self,dir):
        download_hist_extraction_dict = {}
 
        bbdd = self.get_path_by_os(dir, 'places.sqlite')
@@ -1236,7 +1248,7 @@ class Dumpzilla():
     ### DOWNLOADS DIRECTORIES                                                                                     #
     ###############################################################################################################
 
-    def show_downloadsdir_firefox(self,dir):
+    def show_downloadsdir(self,dir):
        download_dir_extraction_dict = {}
 
        bbdd = self.get_path_by_os(dir, 'content-prefs.sqlite')
@@ -1294,7 +1306,7 @@ class Dumpzilla():
     ### FORMS                                                                                                     #
     ###############################################################################################################
 
-    def show_forms_firefox(self,dir):
+    def show_forms(self,dir):
        forms_extraction_dict = {}
 
        bbdd = self.get_path_by_os(dir, 'formhistory.sqlite')
@@ -1334,7 +1346,7 @@ class Dumpzilla():
     ### HISTORY                                                                                                   #
     ###############################################################################################################
 
-    def show_history_firefox(self,dir):
+    def show_history(self,dir):
        history_extraction_dict = {}
 
        bbdd = self.get_path_by_os(dir, 'places.sqlite')
@@ -1377,7 +1389,7 @@ class Dumpzilla():
     ### BOOKMARKS                                                                                                 #
     ###############################################################################################################
 
-    def show_bookmarks_firefox(self,dir):
+    def show_bookmarks(self,dir):
        bookmarks_extraction_dict = {}
 
        bbdd = self.get_path_by_os(dir, 'places.sqlite')
@@ -1742,17 +1754,19 @@ class Dumpzilla():
        session_sources = ["sessionstore.js","sessionstore.json","sessionstore.bak"]
        # Checking for more backup session sources (I)
        for s in os.listdir(dir):
-          # Adding new source
-          if path.isfile(path.join(dir,s)) and s.startswith("sessionstore") and s not in session_sources:
-             session_sources.append(s)
+          if not s.startswith('.'):
+              # Adding new source
+              if path.isfile(path.join(dir,s)) and s.startswith("sessionstore") and s not in session_sources:
+                 session_sources.append(s)
 
        # Checking for more backup session sources (II)
        session_folder = path.join(dir,"sessionstore-backups")
        if path.isdir(session_folder):
           for s in os.listdir(session_folder):
-             # Adding new source
-             if path.isfile(path.join(session_folder,s)):
-                session_sources.append(path.join("sessionstore-backups",s))
+             if not s.startswith('.'):
+                 # Adding new source
+                 if path.isfile(path.join(session_folder,s)):
+                    session_sources.append(path.join("sessionstore-backups",s))
 
        # Extraction
        for a in session_sources:
@@ -2112,7 +2126,7 @@ Profile location:
         #...........................................
         #... Session parameters
         #...........................................
-        parser.add_argument("--Session", action="store_true", default=False,  dest='is_session_ok', help="")
+        parser.add_argument("--Session", action="store_true", default=is_all_ok,  dest='is_session_ok', help="")
         #...........................................
         #... Export parameters
         #...........................................
@@ -2330,37 +2344,37 @@ Profile location:
             ### TODO: Find another way to make it  work without anyexec var
             anyexec = False
             if self.args.is_cookie_ok:
-                self.show_cookies_firefox(dir)
+                self.show_cookies(dir)
                 anyexec = True
             if self.args.is_permissions_ok:
-                self.show_permissions_firefox(dir)
+                self.show_permissions(dir)
                 anyexec = True
             if self.args.is_preferences_ok:
-                self.show_preferences_firefox(dir)
+                self.show_preferences(dir)
                 anyexec = True
             if self.args.is_addon_ok:
-                self.show_addons_firefox(dir)
-                self.show_extensions_firefox(dir)
+                self.show_addons(dir)
+                self.show_extensions(dir)
                 self.show_info_addons(dir)
             if self.args.is_search_ok:
                 self.show_search_engines(dir)
                 anyexec = True
             if self.args.is_downloads_ok:
-                self.show_downloads_firefox(dir)
-                self.show_downloads_history_firefox(dir)
-                self.show_downloadsdir_firefox(dir)
+                self.show_downloads(dir)
+                self.show_downloads_history(dir)
+                self.show_downloadsdir(dir)
                 anyexec = True
             if self.args.is_forms_ok:
-                self.show_forms_firefox(dir)
+                self.show_forms(dir)
                 anyexec = True
             if self.args.is_history_ok:
-                self.show_history_firefox(dir)
+                self.show_history(dir)
                 anyexec = True
             if self.args.is_bookmarks_ok:
-                self.show_bookmarks_firefox(dir)
+                self.show_bookmarks(dir)
                 anyexec = True
             if self.args.is_passwords_ok:
-                self.show_passwords_firefox(dir)
+                self.show_passwords(dir)
                 anyexec = True
             if self.args.is_cacheoff_ok:
                 self.show_cache(dir)
