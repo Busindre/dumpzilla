@@ -118,7 +118,7 @@ class Dumpzilla():
         libnss =  CDLL("C:\Program Files (x86)\Mozilla Firefox\nss3.dll")
     elif sys.platform.endswith('win') == False: # LINUX
         libnss = CDLL("libnss3.so")
-    else:
+    else: # MAC
         libnss = False
 
     ########################################### GLOBAL DECODE VARIABLES ###########################################
@@ -1716,9 +1716,13 @@ class Dumpzilla():
 
     def show_watch(self,dir,watch_text = 1):
        sw_py_path = self.PYTHON3_PATH
-       if sys.platform.startswith('win') == True:
-          self.log("CRITICAL","--Watch option not supported on Windows!")
-          return
+       print(sys.platform)
+       if sys.platform.startswith('win'):
+           self.log("CRITICAL","--Watch option not supported on Windows!")
+           exit(2)
+       elif sys.platform.endswith('win'):
+           self.log("CRITICAL","--Watch option not supported on MacOS!")
+           exit(2)
        elif sw_py_path == '':
           sw_py_path = self.get_user_value('Python 3 path (Press Enter for default - ' + self.PYTHON3_DEF + '): ').strip() # Python 3.x path (NO Windows). Example: /usr/bin/python3.4
           if sw_py_path == '':
