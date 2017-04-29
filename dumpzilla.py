@@ -300,6 +300,13 @@ class Dumpzilla():
         else:
             return lz4.block.decompress(file.read())
 
+    def getJSON(self, file):
+        try:
+            return json.loads(file.read())
+        except UnicodeDecodeError:
+            self.log("ERROR", str(sys.exc_info()[0]) + " " + str(sys.exc_info()[1]) + ". Please check locale settings to verify UTF-8 is set!")
+            json.JSONEncoder().encode({})
+
     ###############################################################################################################
     ### SHA256 HASHING                                                                                            #
     ###############################################################################################################
@@ -353,41 +360,46 @@ class Dumpzilla():
              if a.endswith(".json") == True:
                 # JSON
                 f = open(bbdd)
-                jdata = json.loads(f.read())
+                jdata = self.getJSON(f)
                 f.close()
                 _extraction_list = []
-                for l in jdata.get("logins"):
-                    _extraction_dict = {}
-                    if l.get("id") is not None:
-                        self.uname.data  = cast(c_char_p(b64decode(l.get("encryptedUsername"))),c_void_p)
-                        self.uname.len = len(b64decode(l.get("encryptedUsername")))
-                        self.passwd.data = cast(c_char_p(b64decode(l.get("encryptedPassword"))),c_void_p)
-                        self.passwd.len=len(b64decode(l.get("encryptedPassword")))
+                try:
+                    for l in jdata.get("logins"):
+                        _extraction_dict = {}
+                        if l.get("id") is not None:
+                            self.uname.data  = cast(c_char_p(b64decode(l.get("encryptedUsername"))),c_void_p)
+                            self.uname.len = len(b64decode(l.get("encryptedUsername")))
+                            self.passwd.data = cast(c_char_p(b64decode(l.get("encryptedPassword"))),c_void_p)
+                            self.passwd.len=len(b64decode(l.get("encryptedPassword")))
 
-                        if self.libnss and self.libnss.PK11SDR_Decrypt(byref(self.uname), byref(self.dectext), byref(self.pwdata)) == -1:
-                            self.log("INFO", "Master password required")
-                            password = c_char_p(self.get_user_value(a + " password: ").encode("utf8"))
-                            keyslot = self.libnss.PK11_GetInternalKeySlot()
-                            if keyslot is None:
-                                # Something went wrong!
-                                self.log("ERROR","Failed to retrieve internal KeySlot")
+                            if self.libnss and self.libnss.PK11SDR_Decrypt(byref(self.uname), byref(self.dectext), byref(self.pwdata)) == -1:
+                                self.log("INFO", "Master password required")
+                                password = c_char_p(self.get_user_value(a + " password: ").encode("utf8"))
+                                keyslot = self.libnss.PK11_GetInternalKeySlot()
+                                if keyslot is None:
+                                    # Something went wrong!
+                                    self.log("ERROR","Failed to retrieve internal KeySlot")
+                                    return
+                                check_rc = self.libnss.PK11_CheckUserPassword(keyslot, password)
+                                if check_rc != 0:
+                                    # Something went wrong with given password
+                                    self.log("ERROR","Password decoding failed! Check master password")
+                                    return;
+
+                            _extraction_dict["0-Web"] = self.decode_reg(l.get("hostname"))
+                            _extraction_dict["1-Username"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
+
+                            if self.libnss and self.libnss.PK11SDR_Decrypt(byref(self.passwd),byref(self.dectext),byref(self.pwdata))==-1:
+                                self.log("ERROR","Master password decryption failed!")
                                 return
-                            check_rc = self.libnss.PK11_CheckUserPassword(keyslot, password)
-                            if check_rc != 0:
-                                # Something went wrong with given password
-                                self.log("ERROR","Password decoding failed! Check master password")
-                                return;
 
-                        _extraction_dict["0-Web"] = self.decode_reg(l.get("hostname"))
-                        _extraction_dict["1-Username"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
+                            _extraction_dict["2-Password"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
 
-                        if self.libnss and self.libnss.PK11SDR_Decrypt(byref(self.passwd),byref(self.dectext),byref(self.pwdata))==-1:
-                            self.log("ERROR","Master password decryption failed!")
-                            return
+                            _extraction_list.append(_extraction_dict)
 
-                        _extraction_dict["2-Password"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
-
-                        _extraction_list.append(_extraction_dict)
+                except:
+                   e = str(sys.exc_info()[0])
+                   self.log("ERROR","Passwords database: Can't process file " + a + ": " + e )
 
                 decode_passwords_extraction_dict[bbdd] = _extraction_list
 
@@ -465,31 +477,36 @@ class Dumpzilla():
                 if a.endswith(".json") == True:
                     # JSON
                     f = open(bbdd)
-                    jdata = json.loads(f.read())
+                    jdata = self.getJSON(f)
                     f.close()
 
                     _extraction_list = []
-                    for l in jdata.get("logins"):
-                        _extraction_dict = {}
-                        if l.get("id") is not None:
-                            _extraction_dict['0-Web'] = l.get("hostname")
-                            _extraction_dict['1-User field'] = l.get("usernameField")
-                            _extraction_dict['2-Password field'] = l.get("passwordField")
-                            _extraction_dict['3-User login (crypted)'] = l.get("encryptedUsername")
-                            _extraction_dict['4-Password login (crypted)'] = l.get("encryptedPassword")
-                            #_extraction_dict['99-Encripton type'] = l.get("encType")
+                    try:
+                        for l in jdata.get("logins"):
+                            _extraction_dict = {}
+                            if l.get("id") is not None:
+                                _extraction_dict['0-Web'] = l.get("hostname")
+                                _extraction_dict['1-User field'] = l.get("usernameField")
+                                _extraction_dict['2-Password field'] = l.get("passwordField")
+                                _extraction_dict['3-User login (crypted)'] = l.get("encryptedUsername")
+                                _extraction_dict['4-Password login (crypted)'] = l.get("encryptedPassword")
+                                #_extraction_dict['99-Encripton type'] = l.get("encType")
 
-                        create_date = datetime.fromtimestamp(int(l.get("timeCreated"))/1000).strftime('%Y-%m-%d %H:%M:%S')
-                        _extraction_dict['5-Created'] = create_date
+                            create_date = datetime.fromtimestamp(int(l.get("timeCreated"))/1000).strftime('%Y-%m-%d %H:%M:%S')
+                            _extraction_dict['5-Created'] = create_date
 
-                        lastuse_date = datetime.fromtimestamp(int(l.get("timeLastUsed"))/1000).strftime('%Y-%m-%d %H:%M:%S')
-                        _extraction_dict['6-Last used'] = lastuse_date
+                            lastuse_date = datetime.fromtimestamp(int(l.get("timeLastUsed"))/1000).strftime('%Y-%m-%d %H:%M:%S')
+                            _extraction_dict['6-Last used'] = lastuse_date
 
-                        change_date = datetime.fromtimestamp(int(l.get("timePasswordChanged"))/1000).strftime('%Y-%m-%d %H:%M:%S')
-                        _extraction_dict['7-Change'] = change_date
-                        _extraction_dict['8-Frequency'] = l.get("timesUsed")
+                            change_date = datetime.fromtimestamp(int(l.get("timePasswordChanged"))/1000).strftime('%Y-%m-%d %H:%M:%S')
+                            _extraction_dict['7-Change'] = change_date
+                            _extraction_dict['8-Frequency'] = l.get("timesUsed")
 
-                        _extraction_list.append(_extraction_dict)
+                            _extraction_list.append(_extraction_dict)
+
+                    except:
+                       e = str(sys.exc_info()[0])
+                       self.log("ERROR","Passwords database: Can't process file " + a + ": " + e )
 
                     passwords_extraction_dict[bbdd] = _extraction_list
 
@@ -533,7 +550,7 @@ class Dumpzilla():
                         passwords_extraction_dict[bbdd] = _extraction_list
                     except:
                        e = str(sys.exc_info()[0])
-                       self.log("ERROR","Passwords database: can't process file " + a + ":" + e )
+                       self.log("ERROR","Passwords database: can't process file " + a + ": " + e )
 
                     cursor.close()
                     conn.close()
@@ -892,17 +909,21 @@ class Dumpzilla():
                 if a.endswith(".json") == True:
                     # JSON
                     f = open(bbdd)
-                    jdata = json.loads(f.read())
+                    jdata = self.getJSON(f)
                     f.close()
                     _extraction_list = []
-                    for addon in jdata.get("addons"):
-                        _extraction_dict = {}
-                        if addon.get("id") is not None:
-                            _extraction_dict['0-Name'] = addon.get("name")
-                            _extraction_dict['1-Version'] = addon.get("version")
-                            _extraction_dict['2-Creator URL'] = addon.get("creator").get("url")
-                            _extraction_dict['3-Homepage URL'] = addon.get("homepageURL")
-                            _extraction_list.append(_extraction_dict)
+                    try:
+                        for addon in jdata.get("addons"):
+                            _extraction_dict = {}
+                            if addon.get("id") is not None:
+                                _extraction_dict['0-Name'] = addon.get("name")
+                                _extraction_dict['1-Version'] = addon.get("version")
+                                _extraction_dict['2-Creator URL'] = addon.get("creator").get("url")
+                                _extraction_dict['3-Homepage URL'] = addon.get("homepageURL")
+                                _extraction_list.append(_extraction_dict)
+                    except:
+                       e = str(sys.exc_info()[0])
+                       self.log("ERROR","Addons database: Can't process file " + a + ": " + e )
 
                     addons_extraction_dict[bbdd] = _extraction_list
 
@@ -952,7 +973,7 @@ class Dumpzilla():
              if a.endswith(".json") == True:
                 # JSON
                 f = open(filepath)
-                jdata = json.loads(f.read())
+                jdata = self.getJSON(f)
                 f.close()
                 # Fix compatibility python2-python3
                 _extraction_list = []
@@ -1042,7 +1063,7 @@ class Dumpzilla():
 
                 except:
                    e = str(sys.exc_info()[0])
-                   self.log("ERROR","Extensions database: can't process file " + a + ":" + e )
+                   self.log("ERROR","Extensions database: can't process file " + a + ": " + e )
 
 
              if a.endswith(".sqlite") == True:
@@ -1107,14 +1128,15 @@ class Dumpzilla():
                         _extraction_list.append(_extraction_dict)
 
                     se_extraction_dict[filepath] = _extraction_list
-                except TypeError:
+
+                except:
                    e = str(sys.exc_info()[0])
-                   self.log("ERROR","Search Engines database: can't process file " + a + ":" + e )
+                   self.log("ERROR","Search Engines database: can't process file " + a + ": " + e )
 
              if a.endswith(".json"):
                 # JSON
                 f = open(filepath)
-                jdata = json.loads(f.read())
+                jdata = self.getJSON(f)
                 f.close()
                 try:
                    _extraction_list = []
@@ -1128,9 +1150,9 @@ class Dumpzilla():
 
                    se_extraction_dict[filepath] = _extraction_list
 
-                except TypeError:
+                except:
                    e = str(sys.exc_info()[0])
-                   self.log("ERROR","Search Engines database: can't process file " + a + ":" + e )
+                   self.log("ERROR","Search Engines database: can't process file " + a + ": " + e )
 
              if a.endswith(".sqlite") == True:
                 # SQLITE
@@ -1779,10 +1801,10 @@ class Dumpzilla():
           if path.isfile(bbdd) == True:
              session_found = True
              f = open(bbdd)
-             jdata = json.loads(f.read())
+             jdata = self.getJSON(f)
              f.close()
 
-             _extraction_list = self.extract_data_session(jdata)
+             _extraction_list = self.extract_data_session(jdata, a)
 
              session_extraction_dict[bbdd] = _extraction_list
 
@@ -1795,106 +1817,116 @@ class Dumpzilla():
     ### DATA SESSION                                                                                              #
     ###############################################################################################################
 
-    def extract_data_session(self,jdata):
-       _extraction_list = []
-       for win in jdata.get("windows"):
-          for tab in win.get("tabs"):
-             _extraction_dict = {}
-             _extraction_dict["01-Last update"] = str(time.ctime(jdata["session"]["lastUpdate"]/1000.0))
-             _extraction_dict["02-Type"] = "Default"
-
-             if tab.get("index") is not None:
-                i = tab.get("index") - 1
-
-             _extraction_dict["03-Title"] = tab.get("entries")[i].get("title")
-             _extraction_dict["04-URL"] = tab.get("entries")[i].get("url")
-
-             if tab.get("entries")[i].get("referrer") is not None:
-                _extraction_dict["05-Referrer"] = tab.get("entries")[i].get("referrer")
-
-             if tab.get("entries")[i].get("formdata") is not None and str(tab.get("entries")[i].get("formdata")) != "{}" :
-                if str(tab.get("entries")[i].get("formdata").get("xpath")) == "{}" and str(tab.get("entries")[i].get("formdata").get("id")) != "{}":
-                   _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata").get("id")
-                elif str(tab.get("entries")[i].get("formdata").get("xpath")) != "{}" and str(tab.get("entries")[i].get("formdata").get("id")) == "{}":
-                   _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata").get("xpath")
-                else:
-                   _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata")
-
-             _extraction_list.append(_extraction_dict)
-
-          # Closed tabs
-          if win.get("_closedTabs") is not None and len(win.get("_closedTabs")) > 0:
-             for closed_tab in win.get("_closedTabs")[0].get("state").get("entries"):
+    def extract_data_session(self,jdata,source):
+        _extraction_list = []
+        try:
+            for win in jdata.get("windows"):
+               for tab in win.get("tabs"):
                 _extraction_dict = {}
-                _extraction_dict["07-Last update"] = str(time.ctime(jdata["session"]["lastUpdate"]/1000.0))
-                _extraction_dict["08-Type"] = "Closed tab"
-                _extraction_dict["09-Title"] = closed_tab.get("title")
-                _extraction_dict["10-URL"] = closed_tab.get("url")
+                _extraction_dict["01-Last update"] = str(time.ctime(jdata["session"]["lastUpdate"]/1000.0))
+                _extraction_dict["02-Type"] = "Default"
+
+                if tab.get("index") is not None:
+                    i = tab.get("index") - 1
+
+                _extraction_dict["03-Title"] = tab.get("entries")[i].get("title")
+                _extraction_dict["04-URL"] = tab.get("entries")[i].get("url")
+
+                if tab.get("entries")[i].get("referrer") is not None:
+                    _extraction_dict["05-Referrer"] = tab.get("entries")[i].get("referrer")
+
+                if tab.get("entries")[i].get("formdata") is not None and str(tab.get("entries")[i].get("formdata")) != "{}" :
+                    if str(tab.get("entries")[i].get("formdata").get("xpath")) == "{}" and str(tab.get("entries")[i].get("formdata").get("id")) != "{}":
+                       _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata").get("id")
+                    elif str(tab.get("entries")[i].get("formdata").get("xpath")) != "{}" and str(tab.get("entries")[i].get("formdata").get("id")) == "{}":
+                       _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata").get("xpath")
+                    else:
+                       _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata")
+
                 _extraction_list.append(_extraction_dict)
 
-       return _extraction_list
+            # Closed tabs
+            if win.get("_closedTabs") is not None and len(win.get("_closedTabs")) > 0:
+                for closed_tab in win.get("_closedTabs")[0].get("state").get("entries"):
+                    _extraction_dict = {}
+                    _extraction_dict["07-Last update"] = str(time.ctime(jdata["session"]["lastUpdate"]/1000.0))
+                    _extraction_dict["08-Type"] = "Closed tab"
+                    _extraction_dict["09-Title"] = closed_tab.get("title")
+                    _extraction_dict["10-URL"] = closed_tab.get("url")
+                    _extraction_list.append(_extraction_dict)
+
+        except:
+           e = str(sys.exc_info()[0])
+           self.log("ERROR","Sessions database: Can't process file " + source + ": " + e )
+
+        return _extraction_list
 
     ###############################################################################################################
     ### DATA SESSION WATCH                                                                                        #
     ###############################################################################################################
 
     def extract_data_session_watch (self,dir):
-       session_watch_found = False
-       session_watch_sources = ["sessionstore.js","sessionstore.json"]
-       # Checking for more backup session sources (I)
-       for s in os.listdir(dir):
-          # Adding new source
-          if path.isfile(path.join(dir,s)) and s.startswith("sessionstore") and s not in session_watch_sources:
-             session_watch_sources.append(s)
-       # Checking for more backup session sources (II)
-       session_watch_folder = path.join(dir,"sessionstore-backups")
-       if path.isdir(session_watch_folder):
-          for s in os.listdir(session_watch_folder):
-             # Adding new source
-             if path.isfile(path.join(session_watch_folder,s)):
-                session_watch_sources.append(path.join("sessionstore-backups",s))
+        session_watch_found = False
+        session_watch_sources = ["sessionstore.js","sessionstore.json"]
+        # Checking for more backup session sources (I)
+        for s in os.listdir(dir):
+            # Adding new source
+            if path.isfile(path.join(dir,s)) and s.startswith("sessionstore") and s not in session_watch_sources:
+                session_watch_sources.append(s)
+        # Checking for more backup session sources (II)
+        session_watch_folder = path.join(dir,"sessionstore-backups")
+        if path.isdir(session_watch_folder):
+            for s in os.listdir(session_watch_folder):
+                # Adding new source
+                if path.isfile(path.join(session_watch_folder,s)):
+                    session_watch_sources.append(path.join("sessionstore-backups",s))
 
-       higher_date = 0
-       higher_source = ""
-       for a in session_watch_sources:
-          bbdd = os.path.join(dir,a)
-          # Checking source file
-          if path.isfile(bbdd) == True:
-             session_watch_found = True
-             f = open(bbdd)
-             jdata = json.loads(f.read())
-             f.close()
-             if jdata["session"]["lastUpdate"] > higher_date:
-                higher_date=jdata["session"]["lastUpdate"]
-                higher_source=bbdd
+        higher_date = 0
+        higher_source = ""
+        for a in session_watch_sources:
+            bbdd = os.path.join(dir,a)
+            # Checking source file
+            if path.isfile(bbdd) == True:
+                session_watch_found = True
+                f = open(bbdd)
+                jdata = self.getJSON(f)
+                f.close()
+                if jdata["session"]["lastUpdate"] > higher_date:
+                    higher_date=jdata["session"]["lastUpdate"]
+                    higher_source=bbdd
 
-       # Showing last updated session data
-       if session_watch_found == True:
-          f = open(higher_source)
-          jdata = json.loads(f.read())
-          f.close()
-          count = 0
-          countform = 0
-          for win in jdata.get("windows"):
-             for tab in win.get("tabs"):
-                if tab.get("index") is not None:
-                   i = tab.get("index") - 1
-                print ("\nTitle: %s" % tab.get("entries")[i].get("title"))
-                print ("URL: %s" % tab.get("entries")[i].get("url"))
-                #print(str(tab.get("entries")[i]))
-                if tab.get("entries")[i].get("formdata") is not None and str(tab.get("entries")[i].get("formdata")) != "{}" :
-                   countform = countform + 1
-                   if str(tab.get("entries")[i].get("formdata").get("xpath")) == "{}" and str(tab.get("entries")[i].get("formdata").get("id")) != "{}":
-                      print ("Form: %s\n" % tab.get("entries")[i].get("formdata").get("id"))
-                   elif str(tab.get("entries")[i].get("formdata").get("xpath")) != "{}" and str(tab.get("entries")[i].get("formdata").get("id")) == "{}":
-                      print ("Form: %s\n" % tab.get("entries")[i].get("formdata").get("xpath"))
-                   else:
-                      print ("Form: %s\n" % tab.get("entries")[i].get("formdata"))
-                count = count + 1
-          print ("\n[INFO] Last update: %s " % time.ctime(jdata["session"]["lastUpdate"]/1000.0))
-          print ("[INFO] Number of windows / tabs in use: %s" % count)
-          print ("[INFO] Number of webs with forms in use: %s" % countform)
-          print ("[INFO] Exit: Ctrl + C")
+        # Showing last updated session data
+        if session_watch_found == True:
+            f = open(higher_source)
+            jdata = self.getJSON(f)
+            f.close()
+            count = 0
+            countform = 0
+            try:
+                for win in jdata.get("windows"):
+                  for tab in win.get("tabs"):
+                    if tab.get("index") is not None:
+                       i = tab.get("index") - 1
+                    print ("\nTitle: %s" % tab.get("entries")[i].get("title"))
+                    print ("URL: %s" % tab.get("entries")[i].get("url"))
+                    #print(str(tab.get("entries")[i]))
+                    if tab.get("entries")[i].get("formdata") is not None and str(tab.get("entries")[i].get("formdata")) != "{}" :
+                       countform = countform + 1
+                       if str(tab.get("entries")[i].get("formdata").get("xpath")) == "{}" and str(tab.get("entries")[i].get("formdata").get("id")) != "{}":
+                          print ("Form: %s\n" % tab.get("entries")[i].get("formdata").get("id"))
+                       elif str(tab.get("entries")[i].get("formdata").get("xpath")) != "{}" and str(tab.get("entries")[i].get("formdata").get("id")) == "{}":
+                          print ("Form: %s\n" % tab.get("entries")[i].get("formdata").get("xpath"))
+                       else:
+                          print ("Form: %s\n" % tab.get("entries")[i].get("formdata"))
+                    count = count + 1
+            except:
+                e = str(sys.exc_info()[0])
+                self.log("ERROR","Can't process file " + higher_source + ": " + e )
+
+            print ("\n[INFO] Last update: %s " % time.ctime(jdata["session"]["lastUpdate"]/1000.0))
+            print ("[INFO] Number of windows / tabs in use: %s" % count)
+            print ("[INFO] Number of webs with forms in use: %s" % countform)
+            print ("[INFO] Exit: Ctrl + C")
 
     ###############################################################################################################
     ### HELP                                                                                                      #
