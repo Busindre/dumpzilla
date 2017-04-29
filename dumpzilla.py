@@ -1882,7 +1882,7 @@ class Dumpzilla():
     ### HELP                                                                                                      #
     ###############################################################################################################
 
-    def show_help(self):
+    def show_full_help(self):
         logo = """
                 ./oyhhyo/-`  `..`
             :smMNdhyyyhdNMNNmmmNh-
@@ -1906,6 +1906,9 @@ Usage:
 
  """  % (self.VERSION)
         print(logo + self.get_help_msg())
+
+    def show_help(self):
+        print('Usage: ' + self.get_help_msg())
 
     def get_help_msg(self):
        return format("""python dumpzilla.py PROFILE_DIR [OPTIONS]
@@ -2144,7 +2147,7 @@ Profile location:
             dir = path.abspath(dir)
 
             if self.args.is_help_ok:
-                self.show_help();
+                self.show_full_help();
                 sys.exit(0);
 
             if self.args.is_cookie_ok:
