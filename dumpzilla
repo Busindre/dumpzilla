@@ -77,6 +77,19 @@ _dumpzilla()
         return 0
     fi
 
+    # Key-pinning
+    if [[ ${prev} == --Keypinning ]] ; then
+        opts="-entry_type"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    if [[ (${prev} == -entry_type) ]] ; then
+        opts="HPKP HSTS"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
     # OfflineCache
     if [[ ${prev} == --OfflineCache ]] ; then
         opts="-cache_range -extract"
