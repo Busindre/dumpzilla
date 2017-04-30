@@ -5,7 +5,7 @@ import sqlite3, sys, glob, shutil, json, time, hashlib, re, os, logging, lz4
 from base64 import b64decode
 from os import path,walk,makedirs,remove
 from ctypes import (Structure, c_uint, c_void_p, c_ubyte,c_char_p, CDLL, cast,byref,string_at)
-from datetime import datetime
+from datetime import datetime, timedelta
 from subprocess import call
 from collections import OrderedDict
 
@@ -102,6 +102,9 @@ class Dumpzilla():
     cacheoff_filters = []
     cacheoff_directory = None
 
+    # --Keypinning
+    keypinning_filters = []
+
     # --Thumbnails
     thumb_filters = []
 
@@ -169,6 +172,10 @@ class Dumpzilla():
             return raw_input(message);
         else:
             return input(message);
+
+    def serial_date_to_string(self, srl_no):
+        new_date = datetime(1970,1,1,0,0) + timedelta(srl_no - 1)
+        return new_date.strftime("%Y-%m-%d %H:%M:%S")
 
     def log(self, type, message):
         # These are the sequences need to get colored ouput
@@ -608,6 +615,7 @@ class Dumpzilla():
         self.show_history(dir)
         self.show_bookmarks(dir)
         self.show_passwords(dir)
+        self.show_key_pinning(dir)
         self.show_cache(dir)
         self.show_cert_override(dir)
         self.show_thumbnails(dir)
@@ -1468,6 +1476,77 @@ class Dumpzilla():
        conn.close()
 
     ###############################################################################################################
+    ### KEY PINNING                                                                                           #
+    ###############################################################################################################
+
+    def show_key_pinning(self,dir):
+        keypinning_extraction_dict = {}
+
+        bbdd = self.get_path_by_os(dir, 'SiteSecurityServiceState.txt')
+
+        if path.isfile(bbdd) == False:
+            self.log("INFO","Key pinning database not found! Please, check file SiteSecurityServiceState.txt")
+            return
+
+        lines = open(bbdd).readlines()
+
+        nl = 0
+        _extraction_list = []
+        for entry in lines:
+            if lines[nl].split()[0].startswith("#") == False:
+                _extraction_dict = {}
+
+                entry_type = lines[nl].split()[0].split(':')[1]
+                entry_last = lines[nl].split()[2]
+                entry_data = lines[nl].split()[3]
+                entry_expiry = entry_data.split(',')[0]
+                entry_state = entry_data.split(',')[1]
+                entry_subdomain = entry_data.split(',')[2]
+
+                if entry_state == '0':
+                    entry_state_desc = "- Disabled"
+                elif entry_state == '1':
+                    entry_state_desc = "- Enabled"
+                elif entry_state == '2':
+                    entry_state_desc = "- Overwriten"
+                else:
+                    entry_state_desc = ""
+
+                condition = True
+                if len(self.keypinning_filters) > 0:
+                    for f in self.keypinning_filters:
+                        if f[1] == 'type':
+                            condition = (entry_type == f[2])
+                if condition:
+                    _extraction_dict["0-Site"] = lines[nl].split()[0].split(':')[0]
+                    _extraction_dict["1-Type"] = entry_type
+                    _extraction_dict["2-Access-Score"] = lines[nl].split()[1]
+                    _extraction_dict["3-Last-Access"] = self.serial_date_to_string( int(entry_last) )
+                    _extraction_dict["4-Expiry-Date"] = datetime.fromtimestamp(int(entry_expiry)/1000).strftime('%Y-%m-%d %H:%M:%S')
+                    _extraction_dict["5-Security-Property-State"] = entry_state + " "+ entry_state_desc
+
+                    if entry_subdomain == '1':
+                        _extraction_dict["6-Include-Subdomains"] = "Yes"
+                    else:
+                        _extraction_dict["6-Include-Subdomains"] = "No"
+
+                    if entry_type == 'HPKP':
+                        pins = entry_data.split(',')[3].split('=')
+                        pin_cnt = 1
+                        for pin in pins:
+                            if pin != "":
+                                _extraction_dict["7-Pin-" + str(pin_cnt)] = pin
+                                pin_cnt += 1
+
+                    _extraction_list.append(_extraction_dict)
+            nl = nl + 1
+
+        keypinning_extraction_dict[bbdd] = _extraction_list
+
+        self.total_extraction["keypinning"] = keypinning_extraction_dict
+
+
+    ###############################################################################################################
     ### OFFLINE CACHE                                                                                             #
     ###############################################################################################################
 
@@ -1734,16 +1813,16 @@ class Dumpzilla():
         bbdd = self.get_path_by_os(dir,"cert_override.txt")
 
         if path.isfile(bbdd):
-            lineas = open(bbdd).readlines()
+            lines = open(bbdd).readlines()
 
             nl = 0
             _extraction_list = []
-            for certificado in lineas:
-                if lineas[nl].split()[0].startswith("#") == False:
+            for cert in lines:
+                if lines[nl].split()[0].startswith("#") == False:
                     _extraction_dict = {}
-                    _extraction_dict["0-Site"] = lineas[nl].split()[0]
-                    _extraction_dict["1-Hash Algorithm"] = lineas[nl].split()[1]
-                    _extraction_dict["2-Data"] = lineas[nl].split()[2]
+                    _extraction_dict["0-Site"] = lines[nl].split()[0]
+                    _extraction_dict["1-Hash Algorithm"] = lines[nl].split()[1]
+                    _extraction_dict["2-Data"] = lines[nl].split()[2]
                     _extraction_list.append(_extraction_dict)
                 nl = nl + 1
 
@@ -1997,6 +2076,7 @@ Options:
  --Forms [-value <string>] [-forms_range <start> <end>]
  --Help (shows this help message and exit)
  --History [-url <string>] [-title <string>] [-date <date>] [-history_range <start> <end>] [-frequency]
+ --Keypinning [-entry_type <HPKP|HSTS>]
  --OfflineCache [-cache_range <start> <end> -extract <directory>]
  --Preferences
  --Passwords
@@ -2167,6 +2247,13 @@ Profile location:
                   help="[-cache_range <start> <end>]")
         parser.add_argument("-extract", nargs=1,
                   help="[-extract <directory>]")
+        #...........................................
+        #... Key pinning parameters
+        #...........................................
+        parser.add_argument("--Keypinning", action="store_true", default=is_all_ok,  dest='is_keypinning_ok',
+                  help="--Keypinning [-entry_type <HPKP|HSTS>]")
+        parser.add_argument("-entry_type", nargs=1, type=str,
+                  help="[-entry_type <HPKP/HSTS>]")
         #...........................................
         #... Certoverride parameters
         #...........................................
@@ -2352,6 +2439,10 @@ Profile location:
                      self.is_cacheoff_extract_ok = True
                      cacheoff_directory = format(self.args.extract[0])
 
+            if self.args.is_keypinning_ok:
+                 if self.args.entry_type:
+                     keypinning_type = format(self.args.entry_type[0])
+                     self.keypinning_filters.append(["string","type",keypinning_type])
 
             if self.args.is_thump_ok:
                  if self.args.extract_thumb:
@@ -2435,6 +2526,9 @@ Profile location:
             if self.args.is_cacheoff_ok:
                 self.show_cache(dir)
                 anyexec = True
+            if self.args.is_keypinning_ok:
+                self.show_key_pinning(dir)
+                anyexec = True
             if self.args.is_cacheoff_ok and self.is_cacheoff_extract_ok:
                 self.show_cache_extract(dir, cacheoff_directory)
                 anyexec = True
@@ -2481,6 +2575,7 @@ Profile location:
                    "forms"               : "Forms                ",
                    "history"             : "History              ",
                    "bookmarks"           : "Bookmarks            ",
+                   "keypinning"          : "Public Key Pinning   ",
                    "offlinecache"        : "OfflineCache Html5   ",
                    "offlinecache_extract": "OfflineCache Extract ",
                    "thumbnails"          : "Thumbnails images    ",
@@ -2552,15 +2647,18 @@ Profile location:
                 if len(info_headers) == 0 and len(argv) == 2:
                      self.show_title("Total Information")
                      print("No data found!")
-                elif len(info_headers) == 0:
+                elif len(info_headers) == 0 and len(argv) < 2:
                      self.log("CRITICAL","Missing argument!")
                      if self.args.Export and export_folder:
                         os.rmdir(export_folder)
-                     #self.show_help()
+                     self.show_help()
                 else:
                      self.show_title("Total Information")
-                     for header in info_headers:
-                        print("Total " + titles[header] + ": " + str(summary[header]))
+                     if len(info_headers) == 0:
+                        print("No data found!")
+                     else:
+                        for header in info_headers:
+                            print("Total " + titles[header] + ": " + str(summary[header]))
                 print("")
         else:
             self.log("CRITICAL","Failed to read profile directory: " + dir)
