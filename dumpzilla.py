@@ -114,11 +114,29 @@ class Dumpzilla():
     PYTHON3_DEF  = '/usr/bin/python3'
     PYTHON3_PATH = ''
 
+    ######################################## NSS LOADING (PASWORD DECODE) #########################################
+
     if sys.platform.startswith('win') == True: # WINDOWS
-        libnss =  CDLL("C:\Program Files (x86)\Mozilla Firefox\nss3.dll")
+        libnss_path =  "C:\Program Files (x86)\Mozilla Firefox\nss3.dll"
     elif sys.platform.endswith('win') == False: # LINUX
-        libnss = CDLL("libnss3.so")
-    else: # MAC
+        libnss_path = "libnss3.so"
+    elif sys.platform.endswith('win') == True: # MAC
+        # Example: /usr/local/Cellar/nss/3.28.1/lib/libnss3.dylib
+        libnss_path = False
+        if path.isdir("/usr/local/Cellar/nss"):
+           for s in os.listdir("/usr/local/Cellar/nss"): # Iterate through versions
+              libnss_version = path.join("/usr/local/Cellar/nss",s)
+              if path.isdir(libnss_version): # Must be a folder (/usr/local/Cellar/nss/x.xx.x)
+                  libnss_check = path.join(libnss_version,'lib/libnss3.dylib')
+                  if path.isfile(libnss_check):
+                     libnss_path = libnss_check
+                     break
+    else:
+        libnss_path = False
+
+    if libnss_path and path.isfile(libnss_path):
+        libnss = CDLL(libnss_path)
+    else:
         libnss = False
 
     ########################################### GLOBAL DECODE VARIABLES ###########################################
@@ -345,7 +363,10 @@ class Dumpzilla():
        passwords_sources = ["signons.sqlite","logins.json"]
        decode_passwords_extraction_dict = {}
        if not self.libnss:
-          self.log("ERROR","Error decoding passwords: libnss not found!");
+          if not self.libnss_path:
+              self.log("ERROR","Error decoding passwords: libnss not found!")
+          else:
+              self.log("ERROR","Error decoding passwords: libnss not found (" + self.libnss_path + ")");
 
        # TODO: Make self method to decode
        if self.libnss and self.libnss.NSS_Init(dir.encode("utf8"))!=0:
@@ -1978,7 +1999,7 @@ Options:
  --History [-url <string>] [-title <string>] [-date <date>] [-history_range <start> <end>] [-frequency]
  --OfflineCache [-cache_range <start> <end> -extract <directory>]
  --Preferences
- --Passwords (password decoding only works on Unix)
+ --Passwords
  --Permissions [-host <string>] [-modif <date>] [-modif_range <start> <end>]
  --RegExp (use Regular Expresions for string type filters instead of Wildcards)
  --Session
@@ -2012,7 +2033,6 @@ Profile location:
     ### MAIN                                                                                                      #
     ##                                                                                                            #
     ###############################################################################################################
-    # Custom logger class with multiple destinations
     def __init__(self, argv):
 
         # Log Levels
