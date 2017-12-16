@@ -320,17 +320,28 @@ class Dumpzilla():
        cursor.execute(sqlite_query,sqlite_param)
 
     def decompressLZ4(self, file):
-        if file.read(8) != b"mozLz40\0":
-            return None
-        else:
-            return lz4.block.decompress(file.read())
+        lz4_headers = [ b"mozLz40\0", b"mozLz40p\0", b"mozLz40o\0"]
+
+        for header in lz4_headers:
+          value = file.read(len(header))
+          if value == header:
+              return lz4.block.decompress(file.read())
+          file.seek(0)
+            
+        
+
+        return None
 
     def getJSON(self, file):
         try:
+          decompress = self.decompressLZ4(file)
+          if decompress is None:
             return json.loads(file.read())
+          else:
+            return json.loads(decompress)
+
         except UnicodeDecodeError:
             self.log("ERROR", str(sys.exc_info()[0]) + " " + str(sys.exc_info()[1]) + ". Please check locale settings to verify UTF-8 is set!")
-            json.JSONEncoder().encode({})
 
     ###############################################################################################################
     ### SHA256 HASHING                                                                                            #
@@ -1920,40 +1931,44 @@ class Dumpzilla():
     def extract_data_session(self,jdata,source):
         _extraction_list = []
         try:
-            for win in jdata.get("windows"):
-               for tab in win.get("tabs"):
-                _extraction_dict = {}
-                _extraction_dict["01-Last update"] = str(time.ctime(jdata["session"]["lastUpdate"]/1000.0))
-                _extraction_dict["02-Type"] = "Default"
+          nodes = [ "windows", "_closedWindows" ];
 
-                if tab.get("index") is not None:
-                    i = tab.get("index") - 1
-
-                _extraction_dict["03-Title"] = tab.get("entries")[i].get("title")
-                _extraction_dict["04-URL"] = tab.get("entries")[i].get("url")
-
-                if tab.get("entries")[i].get("referrer") is not None:
-                    _extraction_dict["05-Referrer"] = tab.get("entries")[i].get("referrer")
-
-                if tab.get("entries")[i].get("formdata") is not None and str(tab.get("entries")[i].get("formdata")) != "{}" :
-                    if str(tab.get("entries")[i].get("formdata").get("xpath")) == "{}" and str(tab.get("entries")[i].get("formdata").get("id")) != "{}":
-                       _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata").get("id")
-                    elif str(tab.get("entries")[i].get("formdata").get("xpath")) != "{}" and str(tab.get("entries")[i].get("formdata").get("id")) == "{}":
-                       _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata").get("xpath")
-                    else:
-                       _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata")
-
-                _extraction_list.append(_extraction_dict)
-
-            # Closed tabs
-            if win.get("_closedTabs") is not None and len(win.get("_closedTabs")) > 0:
-                for closed_tab in win.get("_closedTabs")[0].get("state").get("entries"):
+          for node in nodes:
+            data = jdata.get(node)
+            if len(data) > 0:
+              for win in data:
+                 for tab in win.get("tabs"):
                     _extraction_dict = {}
-                    _extraction_dict["07-Last update"] = str(time.ctime(jdata["session"]["lastUpdate"]/1000.0))
-                    _extraction_dict["08-Type"] = "Closed tab"
-                    _extraction_dict["09-Title"] = closed_tab.get("title")
-                    _extraction_dict["10-URL"] = closed_tab.get("url")
+                    _extraction_dict["01-Last update"] = str(time.ctime(jdata["session"]["lastUpdate"]/1000.0))
+                    _extraction_dict["02-Type"] = node
+
+                    if tab.get("index") is not None:
+                        i = tab.get("index") - 1
+
+                    _extraction_dict["03-Title"] = tab.get("entries")[i].get("title")
+                    _extraction_dict["04-URL"] = tab.get("entries")[i].get("url")
+                    if tab.get("entries")[i].get("referrer") is not None:
+                        _extraction_dict["05-Referrer"] = tab.get("entries")[i].get("referrer")
+
+                    if tab.get("entries")[i].get("formdata") is not None and str(tab.get("entries")[i].get("formdata")) != "{}" :
+                        if str(tab.get("entries")[i].get("formdata").get("xpath")) == "{}" and str(tab.get("entries")[i].get("formdata").get("id")) != "{}":
+                           _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata").get("id")
+                        elif str(tab.get("entries")[i].get("formdata").get("xpath")) != "{}" and str(tab.get("entries")[i].get("formdata").get("id")) == "{}":
+                           _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata").get("xpath")
+                        else:
+                           _extraction_dict["06-Form"] = tab.get("entries")[i].get("formdata")
+
                     _extraction_list.append(_extraction_dict)
+
+              # Closed tabs
+              if win.get("_closedTabs") is not None and len(win.get("_closedTabs")) > 0:
+                  for closed_tab in win.get("_closedTabs")[0].get("state").get("entries"):
+                      _extraction_dict = {}
+                      _extraction_dict["07-Last update"] = str(time.ctime(jdata["session"]["lastUpdate"]/1000.0))
+                      _extraction_dict["08-Type"] = "_closedTabs"
+                      _extraction_dict["09-Title"] = closed_tab.get("title")
+                      _extraction_dict["10-URL"] = closed_tab.get("url")
+                      _extraction_list.append(_extraction_dict)
 
         except:
            e = str(sys.exc_info()[0])
