@@ -1,0 +1,138 @@
+# dumpzilla completion                      -*- shell-script -*-
+#
+# /etc/bash_completion.d/ (Debian / Ubuntu / CentOS)
+# /usr/share/bash-completion/completions (Arch)
+
+_dumpzilla() 
+{
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    # Files / Dirs completion
+    _filedir
+
+    # All
+    if [[ ${cur} == --* ]] ; then
+        opts="--Addons --Bookmarks --Certoverride --Cookies --Downloads --Export --Forms --Help --History --OfflineCache --Preferences --Passwords --Permissions --RegExp --Session --Summary --Thumbnails --Verbosity --Watch"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    # Addons
+    if [[ ${prev} == --Addons ]] ; then
+        opts="-bm_create_range -bm_last_range"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+
+    elif [[ (${prev} == -bm_create_range) || (${prev} == -bm_last_range) ]] ; then
+        opts="-bm_last_range -bm_create_range"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    # Cookies
+    if [[ ${prev} == --Cookies ]] ; then
+        opts="-showdom -domain -name -hostcookie -access -create -secure -httponly -last_range -create_range"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    if [[ (${prev} == -showdom) || (${prev} == -domain) || (${prev} == -name) || (${prev} == -hostcookie) || (${prev} == -access) || (${prev} == -create) || (${prev} == -secure) || (${prev} == -httponly) || (${prev} == -last_range) || (${prev} == -create_range) ]] ; then
+        opts="-showdom -domain -name -hostcookie -access -create -secure -httponly -last_range -create_range"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    # Downloads
+    if [[ ${prev} == --Downloads ]] ; then
+        opts="-range"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    # Forms
+    if [[ ${prev} == --Forms ]] ; then
+        opts="-value -forms_range"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+
+    elif [[ (${prev} == -value) || (${prev} == -forms_range) ]] ; then
+        opts="-value -forms_range"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    # History
+    if [[ ${prev} == --History ]] ; then
+        opts="-url -title -date -history_range -frequency"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    if [[ (${prev} == -url) || (${prev} == -title) || (${prev} == -date) || (${prev} == -history_range) || (${prev} == -frequency) ]] ; then
+        opts="-url -title -date -history_range -frequency"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    # Key-pinning
+    if [[ ${prev} == --Keypinning ]] ; then
+        opts="-entry_type"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    if [[ (${prev} == -entry_type) ]] ; then
+        opts="HPKP HSTS"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    # OfflineCache
+    if [[ ${prev} == --OfflineCache ]] ; then
+        opts="-cache_range -extract"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+
+    elif [[ (${prev} == -cache_range) || (${prev} == -extract) ]] ; then
+        opts="-cache_range -extract"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    # Permissions
+    if [[ ${prev} == --Permissions ]] ; then
+        opts="-host -modif -modif_range"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+
+    elif [[ (${prev} == -host) || (${prev} == -modif) || (${prev} == -modif_range) ]] ; then
+        opts="-host -modif -modif_range"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    # Thumbnails
+    if [[ ${prev} == --Thumbnails ]] ; then
+        opts="-extract_thumb"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    # Verbosity 
+    if [[ ${prev} == --Verbosity  ]] ; then
+        opts="DEBUG INFO WARNING ERROR CRITICAL"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    # Watch 
+    if [[ ${prev} == --Watch ]] ; then
+        opts="-text"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+}
+complete -F _dumpzilla dumpzilla

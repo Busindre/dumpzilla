@@ -1,0 +1,50 @@
+{
+    "template" : "dumpzilla_cert_override*",
+    "settings" : {
+      "index" : {
+        "refresh_interval" : "5s"
+      }
+    },
+    "mappings" : {
+      "_default_" : {
+        "dynamic_templates" : [ {
+          "message_field" : {
+            "mapping" : {
+              "index" : "analyzed",
+              "omit_norms" : true,
+              "type" : "string"
+            },
+            "match_mapping_type" : "string",
+            "match" : "message"
+          }
+        }, {
+          "string_fields" : {
+            "mapping" : {
+              "index" : "not_analyzed",
+              "type" : "string"
+            },
+            "match_mapping_type" : "string",
+            "match" : "*"
+          }
+        } ],
+        "properties" : {
+          "0-Site" : {
+            "index" : "not_analyzed",
+            "type" : "string"
+          },
+          "1-Hash Algorithm" : {
+            "index" : "not_analyzed",
+            "type" : "string"
+          },
+	  "2-Data" : {
+	    "index" : "not_analyzed",
+	    "type" : "string"
+	  },
+          "@version" : {
+            "index" : "not_analyzed",
+            "type" : "string"
+	  }
+	 }
+       }
+    }
+}
