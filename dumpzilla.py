@@ -244,7 +244,7 @@ class Dumpzilla():
             elif reg is None:
                 return None
             else:
-                return reg.decode('utf-8', 'ignore')
+                return reg.decode(sys.getdefaultencoding(), 'ignore')
         except UnicodeDecodeError:
             self.log("ERROR","UnicodeDecodeError : "+str(sys.exc_info()[1]))
             return None
@@ -395,7 +395,7 @@ class Dumpzilla():
               self.log("ERROR","Error decoding passwords: libnss not found (" + self.libnss_path + ")");
 
        # TODO: Make self method to decode
-       if self.libnss and self.libnss.NSS_Init(dir.encode('utf-8', 'replace'))!=0:
+       if self.libnss and self.libnss.NSS_Init(dir.encode(sys.getdefaultencoding(), 'replace'))!=0:
           self.log("ERROR","Error Initializing NSS_Init, probably no useful results.")
 
        for a in passwords_sources:
@@ -421,7 +421,7 @@ class Dumpzilla():
 
                             if self.libnss and self.libnss.PK11SDR_Decrypt(byref(self.uname), byref(self.dectext), byref(self.pwdata)) == -1:
                                 self.log("INFO", "Master password required")
-                                password = c_char_p(self.get_user_value(a + " password: ").encode('utf-8', 'replace'))
+                                password = c_char_p(self.get_user_value(a + " password: ").encode(sys.getdefaultencoding(), 'replace'))
                                 keyslot = self.libnss.PK11_GetInternalKeySlot()
                                 if keyslot is None:
                                     # Something went wrong!
@@ -467,7 +467,7 @@ class Dumpzilla():
 
                         if self.libnss and self.libnss.PK11SDR_Decrypt(byref(self.uname),byref(self.dectext),byref(self.pwdata))==-1:
                             self.log("INFO", "Master password required")
-                            password = c_char_p(self.get_user_value(a + " password: ").encode('utf-8', 'replace'))
+                            password = c_char_p(self.get_user_value(a + " password: ").encode(sys.getdefaultencoding(), 'replace'))
                             keyslot = self.libnss.PK11_GetInternalKeySlot()
                             if keyslot is None:
                                 # Something went wrong!
@@ -732,7 +732,7 @@ class Dumpzilla():
 
              if show_this_domain == True:
                 _extraction_dict['0-Domain'] = fd
-                _extraction_dict['1-DOM data'] = row[1].decode('utf-8', 'ignore')
+                _extraction_dict['1-DOM data'] = row[1].decode(sys.getdefaultencoding(), 'ignore')
 
              _extraction_list.append(_extraction_dict)
 
@@ -2659,7 +2659,7 @@ Profile location:
                                             try:
                                                 print(tag.split('-',1)[1] + ": " + str(i[tag]))
                                             except UnicodeEncodeError:
-                                                print(tag.split('-',1)[1] + ": " + str(i[tag].encode('utf-8', 'replace')))
+                                                print(tag.split('-',1)[1] + ": " + str(i[tag].encode(sys.getdefaultencoding(), 'replace')))
                                         else:
                                             print(tag.split('-',1)[1] + ": ")
                                     print("")
