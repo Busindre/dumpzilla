@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sqlite3, sys, glob, shutil, json, time, hashlib, re, os, logging, lz4.block
+import sqlite3, sys, glob, shutil, json, time, hashlib, re, os, logging
+from lz4 import block
 from base64 import b64decode
 from os import path,walk,makedirs,remove
 from ctypes import (Structure, c_uint, c_void_p, c_ubyte,c_char_p, CDLL, cast,byref,string_at)
@@ -327,13 +328,13 @@ class Dumpzilla():
         for header in lz4_headers:
           value = file.read(len(header))
           if value == header:
-              return lz4.block.decompress(file.read())
+              return block.decompress(file.read())
           file.seek(0)
             
         if filename.find('.baklz4') != -1 or filename.find('.jsonlz4') != -1:
           value = file.read(20)
 
-          return lz4.block.decompress(file.read())
+          return block.decompress(file.read())
 
         return None
 
