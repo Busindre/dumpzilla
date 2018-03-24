@@ -15,7 +15,7 @@ import argparse
 
 class Dumpzilla():
     ########################################### GLOBAL VARIABLES ##################################################
-    VERSION='v2.0'
+    VERSION='v20180324'
 
     magicpath = 'C:\WINDOWS\system32\magic' # Only in Windows, path to magic file (Read Manual in www.dumpzilla.org)
 
