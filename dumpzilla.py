@@ -244,11 +244,10 @@ class Dumpzilla():
             elif reg is None:
                 return None
             else:
-                return reg.decode()
+                return reg.decode('utf-8', 'ignore')
         except UnicodeDecodeError:
-            #self.log("ERROR","UnicodeDecodeError : "+str(sys.exc_info()[1]))
-            #return None
-            return reg.decode('utf-8')
+            self.log("ERROR","UnicodeDecodeError : "+str(sys.exc_info()[1]))
+            return None
 
     def show_info_header(self,profile):
         if sys.version.startswith('2.') == True:
@@ -320,7 +319,9 @@ class Dumpzilla():
        self.log('DEBUG', 'Execute query: ' + sqlite_query)
        cursor.execute(sqlite_query,sqlite_param)
 
-    def decompressLZ4(self, file):
+    def decompressLZ4(self, file, filename):
+        self.log('DEBUG', 'Check if decompressLZ4 (' + filename + ')')
+        
         lz4_headers = [ b"mozLz40\0", b"mozLz40p\0", b"mozLz40o\0"]
 
         for header in lz4_headers:
@@ -329,20 +330,26 @@ class Dumpzilla():
               return lz4.block.decompress(file.read())
           file.seek(0)
             
-        
+        if filename.find('.baklz4') != -1 or filename.find('.jsonlz4') != -1:
+          value = file.read(20)
+
+          return lz4.block.decompress(file.read())
 
         return None
 
-    def getJSON(self, file):
+    def getJSON(self, file, filename):
         try:
-          decompress = self.decompressLZ4(file)
+          decompress = self.decompressLZ4(file, filename)
           if decompress is None:
             return json.loads(file.read())
           else:
             return json.loads(decompress)
 
         except UnicodeDecodeError:
-            self.log("ERROR", str(sys.exc_info()[0]) + " " + str(sys.exc_info()[1]) + ". Please check locale settings to verify UTF-8 is set!")
+            self.log("ERROR", str(sys.exc_info()[0]) + " " + str(sys.exc_info()[1]) )
+
+        except json.decoder.JSONDecodeError: 
+            self.log("ERROR", "JSONDecodeError - Invalid JSON file (" + filename + ")" )
 
     ###############################################################################################################
     ### SHA256 HASHING                                                                                            #
@@ -388,7 +395,7 @@ class Dumpzilla():
               self.log("ERROR","Error decoding passwords: libnss not found (" + self.libnss_path + ")");
 
        # TODO: Make self method to decode
-       if self.libnss and self.libnss.NSS_Init(dir.encode("utf8"))!=0:
+       if self.libnss and self.libnss.NSS_Init(dir.encode('utf-8', 'replace'))!=0:
           self.log("ERROR","Error Initializing NSS_Init, probably no useful results.")
 
        for a in passwords_sources:
@@ -400,7 +407,7 @@ class Dumpzilla():
              if a.endswith(".json") == True:
                 # JSON
                 f = open(bbdd)
-                jdata = self.getJSON(f)
+                jdata = self.getJSON(f, a)
                 f.close()
                 _extraction_list = []
                 try:
@@ -414,7 +421,7 @@ class Dumpzilla():
 
                             if self.libnss and self.libnss.PK11SDR_Decrypt(byref(self.uname), byref(self.dectext), byref(self.pwdata)) == -1:
                                 self.log("INFO", "Master password required")
-                                password = c_char_p(self.get_user_value(a + " password: ").encode("utf8"))
+                                password = c_char_p(self.get_user_value(a + " password: ").encode('utf-8', 'replace'))
                                 keyslot = self.libnss.PK11_GetInternalKeySlot()
                                 if keyslot is None:
                                     # Something went wrong!
@@ -460,7 +467,7 @@ class Dumpzilla():
 
                         if self.libnss and self.libnss.PK11SDR_Decrypt(byref(self.uname),byref(self.dectext),byref(self.pwdata))==-1:
                             self.log("INFO", "Master password required")
-                            password = c_char_p(self.get_user_value(a + " password: ").encode("utf8"))
+                            password = c_char_p(self.get_user_value(a + " password: ").encode('utf-8', 'replace'))
                             keyslot = self.libnss.PK11_GetInternalKeySlot()
                             if keyslot is None:
                                 # Something went wrong!
@@ -517,7 +524,7 @@ class Dumpzilla():
                 if a.endswith(".json") == True:
                     # JSON
                     f = open(bbdd)
-                    jdata = self.getJSON(f)
+                    jdata = self.getJSON(f, a)
                     f.close()
 
                     _extraction_list = []
@@ -950,7 +957,7 @@ class Dumpzilla():
                 if a.endswith(".json") == True:
                     # JSON
                     f = open(bbdd)
-                    jdata = self.getJSON(f)
+                    jdata = self.getJSON(f, a)
                     f.close()
                     _extraction_list = []
                     try:
@@ -1014,7 +1021,7 @@ class Dumpzilla():
              if a.endswith(".json") == True:
                 # JSON
                 f = open(filepath)
-                jdata = self.getJSON(f)
+                jdata = self.getJSON(f, a)
                 f.close()
                 # Fix compatibility python2-python3
                 _extraction_list = []
@@ -1158,7 +1165,7 @@ class Dumpzilla():
              if a.endswith(".json.mozlz4"):
                 # LZ4 COMPRESSED JSON
                 fo = open(filepath, "rb")
-                jdata = json.loads(self.decompressLZ4(fo))
+                jdata = json.loads(self.decompressLZ4(fo, a))
                 try:
                     _extraction_list = []
                     for engine in jdata.get("engines"):
@@ -1177,7 +1184,7 @@ class Dumpzilla():
              if a.endswith(".json"):
                 # JSON
                 f = open(filepath)
-                jdata = self.getJSON(f)
+                jdata = self.getJSON(f, a)
                 f.close()
                 try:
                    _extraction_list = []
@@ -1912,8 +1919,8 @@ class Dumpzilla():
           # Checking source file
           if path.isfile(bbdd) == True:
              session_found = True
-             f = open(bbdd)
-             jdata = self.getJSON(f)
+             f = open(bbdd, 'rb')
+             jdata = self.getJSON(f, a)
              f.close()
 
              _extraction_list = self.extract_data_session(jdata, a)
@@ -1930,6 +1937,8 @@ class Dumpzilla():
     ###############################################################################################################
 
     def extract_data_session(self,jdata,source):
+        self.log("DEBUG","Starting Session Data extraction from " + source + "...")
+
         _extraction_list = []
         try:
           nodes = [ "windows", "_closedWindows" ];
@@ -2005,7 +2014,7 @@ class Dumpzilla():
             if path.isfile(bbdd) == True:
                 session_watch_found = True
                 f = open(bbdd)
-                jdata = self.getJSON(f)
+                jdata = self.getJSON(f, a)
                 f.close()
                 if jdata["session"]["lastUpdate"] > higher_date:
                     higher_date=jdata["session"]["lastUpdate"]
@@ -2014,7 +2023,7 @@ class Dumpzilla():
         # Showing last updated session data
         if session_watch_found == True:
             f = open(higher_source)
-            jdata = self.getJSON(f)
+            jdata = self.getJSON(f, higher_source)
             f.close()
             count = 0
             countform = 0
@@ -2650,7 +2659,7 @@ Profile location:
                                             try:
                                                 print(tag.split('-',1)[1] + ": " + str(i[tag]))
                                             except UnicodeEncodeError:
-                                                print(tag.split('-',1)[1] + ": " + str(i[tag].encode('utf8')))
+                                                print(tag.split('-',1)[1] + ": " + str(i[tag].encode('utf-8', 'replace')))
                                         else:
                                             print(tag.split('-',1)[1] + ": ")
                                     print("")
