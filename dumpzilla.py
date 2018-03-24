@@ -358,7 +358,7 @@ class Dumpzilla():
 
     def show_sha256(self,filepath):
         sha256 = hashlib.sha256()
-        f = open(filepath, 'rb')
+        f = open(filepath)
         try:
            sha256.update(f.read())
         finally:
@@ -371,7 +371,7 @@ class Dumpzilla():
         for source in sources:
            if path.isfile(source):
                 sha256 = hashlib.sha256()
-                f = open(source, 'rb')
+                f = open(source)
                 try:
                    sha256.update(f.read())
                 finally:
@@ -957,7 +957,7 @@ class Dumpzilla():
 
                 if a.endswith(".json") == True:
                     # JSON
-                    f = open(bbdd, 'rb')
+                    f = open(bbdd)
                     jdata = self.getJSON(f, a)
                     f.close()
                     _extraction_list = []
@@ -1021,7 +1021,7 @@ class Dumpzilla():
 
              if a.endswith(".json") == True:
                 # JSON
-                f = open(filepath, 'rb')
+                f = open(filepath)
                 jdata = self.getJSON(f, a)
                 f.close()
                 # Fix compatibility python2-python3
@@ -1184,7 +1184,7 @@ class Dumpzilla():
 
              if a.endswith(".json"):
                 # JSON
-                f = open(filepath, 'rb')
+                f = open(filepath)
                 jdata = self.getJSON(f, a)
                 f.close()
                 try:
@@ -1920,7 +1920,10 @@ class Dumpzilla():
           # Checking source file
           if path.isfile(bbdd) == True:
              session_found = True
-             f = open(bbdd, 'rb')
+             if a.find('.baklz4') != -1 or a.find('.jsonlz4') != -1 or a.find('.json.mozlz4') != -1:
+               f = open(bbdd, 'rb')
+             else:
+               f = open(bbdd)
              jdata = self.getJSON(f, a)
              f.close()
 
