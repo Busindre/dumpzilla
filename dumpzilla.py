@@ -124,16 +124,17 @@ class Dumpzilla():
     elif sys.platform.endswith('win') == False: # LINUX
         libnss_path = "libnss3.so"
     elif sys.platform.endswith('win') == True: # MAC
+        libnss_path = 'libnss3.dylib'
         # Example: /usr/local/Cellar/nss/3.28.1/lib/libnss3.dylib
-        libnss_path = False
-        if path.isdir("/usr/local/Cellar/nss"):
-           for s in os.listdir("/usr/local/Cellar/nss"): # Iterate through versions
-              libnss_version = path.join("/usr/local/Cellar/nss",s)
-              if path.isdir(libnss_version): # Must be a folder (/usr/local/Cellar/nss/x.xx.x)
-                  libnss_check = path.join(libnss_version,'lib/libnss3.dylib')
-                  if path.isfile(libnss_check):
-                     libnss_path = libnss_check
-                     break
+        # libnss_path = False
+        # if path.isdir("/usr/local/Cellar/nss"):
+        #    for s in os.listdir("/usr/local/Cellar/nss"): # Iterate through versions
+        #       libnss_version = path.join("/usr/local/Cellar/nss",s)
+        #       if path.isdir(libnss_version): # Must be a folder (/usr/local/Cellar/nss/x.xx.x)
+        #           libnss_check = path.join(libnss_version,'lib/libnss3.dylib')
+        #           if path.isfile(libnss_check):
+        #              libnss_path = libnss_check
+        #              break
     else:
         libnss_path = False
 
