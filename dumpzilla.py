@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sqlite3, sys, glob, shutil, json, time, hashlib, re, os, logging, lz4
+import sqlite3, sys, glob, shutil, json, time, hashlib, re, os, logging, lz4.block
 from base64 import b64decode
 from os import path,walk,makedirs,remove
 from ctypes import (Structure, c_uint, c_void_p, c_ubyte,c_char_p, CDLL, cast,byref,string_at)
@@ -15,7 +15,7 @@ import argparse
 
 class Dumpzilla():
     ########################################### GLOBAL VARIABLES ##################################################
-    VERSION='v20161106'
+    VERSION='v2.0'
 
     magicpath = 'C:\WINDOWS\system32\magic' # Only in Windows, path to magic file (Read Manual in www.dumpzilla.org)
 
