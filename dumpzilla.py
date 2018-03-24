@@ -956,7 +956,7 @@ class Dumpzilla():
 
                 if a.endswith(".json") == True:
                     # JSON
-                    f = open(bbdd)
+                    f = open(bbdd, 'rb')
                     jdata = self.getJSON(f, a)
                     f.close()
                     _extraction_list = []
@@ -1020,7 +1020,7 @@ class Dumpzilla():
 
              if a.endswith(".json") == True:
                 # JSON
-                f = open(filepath)
+                f = open(filepath, 'rb')
                 jdata = self.getJSON(f, a)
                 f.close()
                 # Fix compatibility python2-python3
@@ -1183,7 +1183,7 @@ class Dumpzilla():
 
              if a.endswith(".json"):
                 # JSON
-                f = open(filepath)
+                f = open(filepath, 'rb')
                 jdata = self.getJSON(f, a)
                 f.close()
                 try:
