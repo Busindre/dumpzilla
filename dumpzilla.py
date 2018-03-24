@@ -322,19 +322,17 @@ class Dumpzilla():
 
     def decompressLZ4(self, file, filename):
         self.log('DEBUG', 'Check if decompressLZ4 (' + filename + ')')
-        
+
         lz4_headers = [ b"mozLz40\0", b"mozLz40p\0", b"mozLz40o\0"]
 
         for header in lz4_headers:
           value = file.read(len(header))
           if value == header:
-              return block.decompress(file.read())
+              return block.decompress(file.read()).decode(sys.getdefaultencoding(), 'ignore')
           file.seek(0)
-            
-        if filename.find('.baklz4') != -1 or filename.find('.jsonlz4') != -1:
-          value = file.read(20)
 
-          return block.decompress(file.read())
+        if filename.find('.baklz4') != -1 or filename.find('.jsonlz4') != -1:
+          return block.decompress(file.read()).decode(sys.getdefaultencoding(), 'ignore')
 
         return None
 
@@ -349,7 +347,7 @@ class Dumpzilla():
         except UnicodeDecodeError:
             self.log("ERROR", str(sys.exc_info()[0]) + " " + str(sys.exc_info()[1]) )
 
-        except json.decoder.JSONDecodeError: 
+        except json.decoder.JSONDecodeError:
             self.log("ERROR", "JSONDecodeError - Invalid JSON file (" + filename + ")" )
 
     ###############################################################################################################
@@ -358,7 +356,7 @@ class Dumpzilla():
 
     def show_sha256(self,filepath):
         sha256 = hashlib.sha256()
-        f = open(filepath)
+        f = open(filepath, 'rb')
         try:
            sha256.update(f.read())
         finally:
@@ -371,7 +369,7 @@ class Dumpzilla():
         for source in sources:
            if path.isfile(source):
                 sha256 = hashlib.sha256()
-                f = open(source)
+                f = open(source, 'rb')
                 try:
                    sha256.update(f.read())
                 finally:
