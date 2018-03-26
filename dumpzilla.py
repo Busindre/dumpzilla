@@ -5,7 +5,7 @@ import sqlite3, sys, glob, shutil, json, time, hashlib, re, os, logging
 from lz4 import block
 from base64 import b64decode
 from os import path,walk,makedirs,remove
-from ctypes import (Structure, c_uint, c_void_p, c_ubyte,c_char_p, CDLL, cast,byref,string_at)
+from ctypes import (cdll, Structure, c_uint, c_void_p, c_ubyte,c_char_p, CDLL, cast,byref,string_at)
 from datetime import datetime, timedelta
 from subprocess import call
 from collections import OrderedDict
@@ -123,7 +123,7 @@ class Dumpzilla():
     if sys.platform.startswith('win') == True: # WINDOWS
         libnss_path =  "C:\Program Files (x86)\Mozilla Firefox\nss3.dll"
     elif sys.platform.endswith('win') == False: # LINUX
-        libnss_path = False
+        libnss_path = False # TODO: Make a method with this searchs
         if path.isfile('libnss3.so'):
             libnss_path = 'libnss3.so'
         else:
@@ -137,17 +137,19 @@ class Dumpzilla():
                 if libnss_path:
                     break
     elif sys.platform.endswith('win') == True: # MAC
-        libnss_path = 'libnss3.dylib'
-        # Example: /usr/local/Cellar/nss/3.28.1/lib/libnss3.dylib
-        # libnss_path = False
-        # if path.isdir("/usr/local/Cellar/nss"):
-        #    for s in os.listdir("/usr/local/Cellar/nss"): # Iterate through versions
-        #       libnss_version = path.join("/usr/local/Cellar/nss",s)
-        #       if path.isdir(libnss_version): # Must be a folder (/usr/local/Cellar/nss/x.xx.x)
-        #           libnss_check = path.join(libnss_version,'lib/libnss3.dylib')
-        #           if path.isfile(libnss_check):
-        #              libnss_path = libnss_check
-        #              break
+        libnss_path = False # TODO: Make a method with this searchs
+        if path.isfile('libnss3.dylib'):
+            libnss_path = 'libnss3.dylib'
+        else:
+            locations = ['/Applications/Firefox*/Contents/MacOS/libnss3.dylib', '/usr/local/Cellar/nss/*/lib/libnss3.dylib']
+            for loc in locations:
+                matches = glob.glob(loc)
+                for libnss_check in matches:
+                    if path.isfile(libnss_check):
+                        libnss_path = libnss_check
+                        break
+                if libnss_path:
+                    break
     else:
         libnss_path = False
 
