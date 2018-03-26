@@ -4,8 +4,8 @@
 import sqlite3, sys, glob, shutil, json, time, hashlib, re, os, logging
 from lz4 import block
 from base64 import b64decode
-from os import path,walk,makedirs,remove
-from ctypes import (cdll, Structure, c_uint, c_void_p, c_ubyte,c_char_p, CDLL, cast,byref,string_at)
+from os import path, walk, makedirs, remove, stat
+from ctypes import (Structure, c_uint, c_void_p, c_ubyte,c_char_p, CDLL, cast,byref,string_at)
 from datetime import datetime, timedelta
 from subprocess import call
 from collections import OrderedDict
@@ -154,7 +154,7 @@ class Dumpzilla():
         libnss_path = False
 
     if libnss_path and path.isfile(libnss_path):
-        try: 
+        try:
             libnss = CDLL(libnss_path)
         except OSError:
             print ("An error ocurred while loading libnss3 (" + libnss_path + ")\n"+str(sys.exc_info()[1]))
@@ -420,7 +420,7 @@ class Dumpzilla():
           bbdd = self.get_path_by_os(dir, a)
 
           # Checking source file
-          if path.isfile(bbdd) == True:
+          if path.isfile(bbdd) == True and stat(bbdd).st_size > 0:
              if a.endswith(".json") == True:
                 # JSON
                 f = open(bbdd)
@@ -537,7 +537,7 @@ class Dumpzilla():
             bbdd = self.get_path_by_os(dir, a)
 
             # Checking source file
-            if path.isfile(bbdd) == True:
+            if path.isfile(bbdd) == True and stat(bbdd).st_size > 0:
                 if a.endswith(".json") == True:
                     # JSON
                     f = open(bbdd)
