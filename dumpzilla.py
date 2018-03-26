@@ -123,7 +123,19 @@ class Dumpzilla():
     if sys.platform.startswith('win') == True: # WINDOWS
         libnss_path =  "C:\Program Files (x86)\Mozilla Firefox\nss3.dll"
     elif sys.platform.endswith('win') == False: # LINUX
-        libnss_path = "libnss3.so"
+        libnss_path = False
+        if path.isfile('libnss3.so'):
+            libnss_path = 'libnss3.so'
+        else:
+            locations = ['usr/lib*/libnss3.so', 'usr/local/lib*/libnss3.so', '/lib*/libnss3.so', '/usr/lib*/firefox/libnss3.so', '/usr/lib/thunderbird/libnss3.so']
+            for loc in locations:
+                matches = glob.glob(loc)
+                for libnss_check in matches:
+                    if path.isfile(libnss_check):
+                        libnss_path = libnss_check
+                        break
+                if libnss_path:
+                    break
     elif sys.platform.endswith('win') == True: # MAC
         libnss_path = 'libnss3.dylib'
         # Example: /usr/local/Cellar/nss/3.28.1/lib/libnss3.dylib
