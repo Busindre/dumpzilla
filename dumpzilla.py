@@ -2033,16 +2033,22 @@ class Dumpzilla():
             # Checking source file
             if path.isfile(bbdd) == True:
                 session_watch_found = True
-                f = open(bbdd)
+                if a.find('.baklz4') != -1 or a.find('.jsonlz4') != -1 or a.find('.json.mozlz4') != -1:
+                  f = open(bbdd, 'rb')
+                else:
+                  f = open(bbdd)
                 jdata = self.getJSON(f, a)
                 f.close()
-                if jdata["session"]["lastUpdate"] > higher_date:
+                if jdata and jdata["session"]["lastUpdate"] > higher_date:
                     higher_date=jdata["session"]["lastUpdate"]
                     higher_source=bbdd
 
         # Showing last updated session data
         if session_watch_found == True:
-            f = open(higher_source)
+            if higher_source.find('.baklz4') != -1 or higher_source.find('.jsonlz4') != -1 or higher_source.find('.json.mozlz4') != -1:
+              f = open(higher_source, 'rb')
+            else:
+              f = open(higher_source)
             jdata = self.getJSON(f, higher_source)
             f.close()
             count = 0
@@ -2068,7 +2074,8 @@ class Dumpzilla():
                 e = str(sys.exc_info()[0])
                 self.log("ERROR","Can't process file " + higher_source + ": " + e )
 
-            print ("\n[INFO] Last update: %s " % time.ctime(jdata["session"]["lastUpdate"]/1000.0))
+            if jdata:
+                print ("\n[INFO] Last update: %s " % time.ctime(jdata["session"]["lastUpdate"]/1000.0))
             print ("[INFO] Number of windows / tabs in use: %s" % count)
             print ("[INFO] Number of webs with forms in use: %s" % countform)
             print ("[INFO] Exit: Ctrl + C")
