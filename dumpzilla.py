@@ -154,7 +154,11 @@ class Dumpzilla():
         libnss_path = False
 
     if libnss_path and path.isfile(libnss_path):
-        libnss = CDLL(libnss_path)
+        try: 
+            libnss = CDLL(libnss_path)
+        except OSError:
+            print ("An error ocurred while loading libnss3 (" + libnss_path + ")\n"+str(sys.exc_info()[1]))
+            libnss = False
     else:
         libnss = False
 
