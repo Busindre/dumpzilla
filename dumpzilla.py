@@ -128,7 +128,7 @@ class Dumpzilla():
         if path.isfile('libnss3.so'):
             libnss_path = 'libnss3.so'
         else:
-            locations = ['usr/lib*/libnss3.so', 'usr/local/lib*/libnss3.so', '/lib*/libnss3.so', '/usr/lib*/firefox/libnss3.so', '/usr/lib/thunderbird/libnss3.so']
+            locations = ['usr/lib*/libnss3.so', 'usr/local/lib*/libnss3.so', '/lib*/libnss3.so']
             for loc in locations:
                 matches = glob.glob(loc)
                 for libnss_check in matches:
@@ -142,7 +142,7 @@ class Dumpzilla():
         if path.isfile('libnss3.dylib'):
             libnss_path = 'libnss3.dylib'
         else:
-            locations = ['/Applications/Firefox*/Contents/MacOS/libnss3.dylib', '/usr/local/Cellar/nss/*/lib/libnss3.dylib']
+            locations = ['/usr/local/lib/nss/libnss3.dylib', '/usr/local/opt/nss/lib/libnss3.dylib', '/usr/local/Cellar/nss/*/lib/libnss3.dylib']
             for loc in locations:
                 matches = glob.glob(loc)
                 for libnss_check in matches:
