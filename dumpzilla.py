@@ -16,7 +16,7 @@ import argparse
 
 class Dumpzilla():
     ########################################### GLOBAL VARIABLES ##################################################
-    VERSION='v20180324'
+    VERSION='v20180331'
 
     magicpath = 'C:\WINDOWS\system32\magic' # Only in Windows, path to magic file (Read Manual in www.dumpzilla.org)
 
@@ -102,6 +102,7 @@ class Dumpzilla():
     is_cacheoff_extract_ok = False
     cacheoff_filters = []
     cacheoff_directory = None
+    cacheoff_source = None
 
     # --Keypinning
     keypinning_filters = []
@@ -1586,57 +1587,66 @@ class Dumpzilla():
     ### OFFLINE CACHE                                                                                             #
     ###############################################################################################################
 
-    def show_cache(self,dir):
-       # TODO: firefox-cache2-index-parser.py??
-       offlinecache_extraction_dict = {}
-       cache_found = False
+    def show_cache(self, dir, source):
+      # TODO: firefox-cache2-index-parser.py??
+      offlinecache_extraction_dict = {}
+      cache_found = False
+      cache_abs_sources = []
 
-       # [Default, Windows 7]
-       cache_abs_sources = [self.get_path_by_os(dir,"index.sqlite","OfflineCache")]
+      if source:
+        cache_abs_sources.append(self.get_path_by_os(source, "index.sqlite"))
+      else:
+        self.log("INFO","Offline Cache source not specified! Using default values...")
 
-       # For Windows 7 profile
-       if dir.find("Roaming") > -1:
+        # [Default, Windows 7]
+        cache_abs_sources.append(self.get_path_by_os(dir,"index.sqlite","OfflineCache"))
+
+        # For Windows 7 profile
+        if dir.find("Roaming") > -1:
           cache_abs_sources.append(self.get_path_by_os(dir.replace("Roaming", "Local"),"index.sqlite","OfflineCache"))
 
-       # For Linux profile
-       if dir.find(".mozilla") > -1:
+        # For Linux profile
+        if dir.find(".mozilla") > -1:
           cache_abs_sources.append(self.get_path_by_os(dir.replace(".mozilla", ".cache/mozilla"),"index.sqlite","OfflineCache")) # Firefox
           cache_abs_sources.append(self.get_path_by_os(dir.replace(".mozilla", ".cache/mozilla"),"index.sqlite","Cache")) # Seamonkey
 
-       for d in cache_abs_sources:
-          # Checking source file
-          if path.isfile(d) == True:
+      for d in cache_abs_sources:
+        # Checking source file
+        if path.isfile(d) == True:
 
-             cache_found = True
+          cache_found = True
 
-             if d.endswith(".sqlite") == True:
-                # SQLITE
-                conn = sqlite3.connect(d)
-                conn.text_factory = bytes
-                if self.args.is_regexp_ok == True:
-                   conn.create_function("REGEXP", 2, self.regexp)
+          if d.endswith(".sqlite") == True:
+            
+            # SQLITE
+            conn = sqlite3.connect(d)
+            conn.text_factory = bytes
+            if self.args.is_regexp_ok == True:
+               conn.create_function("REGEXP", 2, self.regexp)
 
-                cursor = conn.cursor()
-                sqlite_query = "select ClientID,key,DataSize,FetchCount,datetime(LastFetched/1000000,'unixepoch','localtime'),datetime(LastModified/1000000,'unixepoch','localtime') as last,datetime(ExpirationTime/1000000,'unixepoch','localtime') from moz_cache"
-                self.execute_query(cursor,sqlite_query,self.cacheoff_filters)
+            cursor = conn.cursor()
+            sqlite_query = "select ClientID,key,DataSize,FetchCount,datetime(LastFetched/1000000,'unixepoch','localtime'),datetime(LastModified/1000000,'unixepoch','localtime') as last,datetime(ExpirationTime/1000000,'unixepoch','localtime') from moz_cache"
+            self.execute_query(cursor,sqlite_query,self.cacheoff_filters)
 
-                _extraction_list = []
-                for row in cursor:
-                   _extraction_dict = {}
-                   _extraction_dict['0-Name'] = self.decode_reg(row[0])
-                   _extraction_dict['1-Value'] = str(self.decode_reg(row[1]))
-                   _extraction_dict['2-Last Modified'] = str(self.decode_reg(row[5]))
-                   _extraction_list.append(_extraction_dict)
+            _extraction_list = []
+            for row in cursor:
+               _extraction_dict = {}
+               _extraction_dict['0-Name'] = self.decode_reg(row[0])
+               _extraction_dict['1-Value'] = str(self.decode_reg(row[1]))
+               _extraction_dict['2-Last Modified'] = str(self.decode_reg(row[5]))
+               _extraction_list.append(_extraction_dict)
 
-                offlinecache_extraction_dict[d] = _extraction_list
+            offlinecache_extraction_dict[d] = _extraction_list
 
-                cursor.close()
-                conn.close()
+            cursor.close()
+            conn.close()
 
-       # Saving extraction to main extraction list
-       self.total_extraction["offlinecache"] = offlinecache_extraction_dict
-       if cache_found == False:
-          self.log("INFO","Offline Cache database not found! Please check file OfflineCache/index.sqlite")
+      # Saving extraction to main extraction list
+      self.total_extraction["offlinecache"] = offlinecache_extraction_dict
+      if cache_found == False and source is None:
+        self.log("WARNING","Offline Cache database not found! You can specify one with '-source' param")
+      else:
+        self.log("WARNING","Offline Cache database not found! Check the source specified looking for index.sqlite")
 
     ###############################################################################################################
     ### OFFLINE CACHE                                                                                             #
@@ -2129,7 +2139,7 @@ Options:
  --Help (shows this help message and exit)
  --History [-url <string>] [-title <string>] [-date <date>] [-history_range <start> <end>] [-frequency]
  --Keypinning [-entry_type <HPKP|HSTS>]
- --OfflineCache [-cache_range <start> <end> -extract <directory>]
+ --OfflineCache [-source <directory> -cache_range <start> <end> -extract <directory>]
  --Preferences
  --Passwords
  --Permissions [-host <string>] [-modif <date>] [-modif_range <start> <end>]
@@ -2294,7 +2304,9 @@ Profile location:
         #... Cache parameters
         #...........................................
         parser.add_argument("--OfflineCache", action="store_true", default=is_all_ok,  dest='is_cacheoff_ok',
-                  help="--OfflineCache [-cache_range <start> <end> -extract <directory>]")
+                  help="--OfflineCache [-source <directory> -cache_range <start> <end> -extract <directory>]")
+        parser.add_argument("-source", nargs=1,
+                  help="[-source <directory>]")
         parser.add_argument("-cache_range", nargs='+',
                   help="[-cache_range <start> <end>]")
         parser.add_argument("-extract", nargs=1,
@@ -2480,16 +2492,20 @@ Profile location:
 
 
             if self.args.is_cacheoff_ok:
-                 if self.args.cache_range:
-                     cacheoff_range1 = self.validate_date(format(self.args.cache_range[0]))
-                     try:
-                         cacheoff_range2 = self.validate_date(format(self.args.cache_range[1]))
-                     except IndexError:
-                         cacheoff_range2 = self.validate_date(format('9999-12-31'))
-                     self.cacheoff_filters.append(["range","last",[cacheoff_range1,cacheoff_range2]])
-                 if self.args.extract:
-                     self.is_cacheoff_extract_ok = True
-                     cacheoff_directory = format(self.args.extract[0])
+                if self.args.cache_range:
+                    cacheoff_range1 = self.validate_date(format(self.args.cache_range[0]))
+                    try:
+                        cacheoff_range2 = self.validate_date(format(self.args.cache_range[1]))
+                    except IndexError:
+                        cacheoff_range2 = self.validate_date(format('9999-12-31'))
+                    self.cacheoff_filters.append(["range","last",[cacheoff_range1,cacheoff_range2]])
+                if self.args.extract:
+                    self.is_cacheoff_extract_ok = True
+                    cacheoff_directory = format(self.args.extract[0])
+                if self.args.source:
+                    cacheoff_source = format(self.args.source[0])
+                else:
+                    cacheoff_source = None
 
             if self.args.is_keypinning_ok:
                  if self.args.entry_type:
@@ -2576,13 +2592,13 @@ Profile location:
                 self.show_passwords(dir)
                 anyexec = True
             if self.args.is_cacheoff_ok:
-                self.show_cache(dir)
+                self.show_cache(dir, cacheoff_source)
                 anyexec = True
             if self.args.is_keypinning_ok:
                 self.show_key_pinning(dir)
                 anyexec = True
             if self.args.is_cacheoff_ok and self.is_cacheoff_extract_ok:
-                self.show_cache_extract(dir, cacheoff_directory)
+                self.show_cache_extract(dir, cacheoff_directory, cacheoff_source)
                 anyexec = True
             if self.args.is_cert_ok:
                 self.show_cert_override(dir)
