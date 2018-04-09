@@ -438,26 +438,11 @@ class Dumpzilla():
                             self.passwd.len=len(b64decode(l.get("encryptedPassword")))
 
                             if self.libnss and self.libnss.PK11SDR_Decrypt(byref(self.uname), byref(self.dectext), byref(self.pwdata)) == -1:
-                                self.log("INFO", "Master password required")
-                                password = c_char_p(self.get_user_value(a + " password: ").encode(sys.getdefaultencoding(), 'replace'))
-                                keyslot = self.libnss.PK11_GetInternalKeySlot()
-                                if keyslot is None:
-                                    # Something went wrong!
-                                    self.log("ERROR","Failed to retrieve internal KeySlot")
-                                    return
-                                check_rc = self.libnss.PK11_CheckUserPassword(keyslot, password)
-                                if check_rc != 0:
-                                    # Something went wrong with given password
-                                    self.log("ERROR","Password decoding failed! Check master password")
-                                    return;
+                                self.log("ERROR", "Master password detected!")
+                                return
 
                             _extraction_dict["0-Web"] = self.decode_reg(l.get("hostname"))
                             _extraction_dict["1-Username"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
-
-                            if self.libnss and self.libnss.PK11SDR_Decrypt(byref(self.passwd),byref(self.dectext),byref(self.pwdata))==-1:
-                                self.log("ERROR","Master password decryption failed!")
-                                return
-
                             _extraction_dict["2-Password"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
 
                             _extraction_list.append(_extraction_dict)
@@ -484,26 +469,11 @@ class Dumpzilla():
                         self.passwd.len=len(b64decode(row[2]))
 
                         if self.libnss and self.libnss.PK11SDR_Decrypt(byref(self.uname),byref(self.dectext),byref(self.pwdata))==-1:
-                            self.log("INFO", "Master password required")
-                            password = c_char_p(self.get_user_value(a + " password: ").encode(sys.getdefaultencoding(), 'replace'))
-                            keyslot = self.libnss.PK11_GetInternalKeySlot()
-                            if keyslot is None:
-                                # Something went wrong!
-                                self.log("ERROR","Failed to retrieve internal KeySlot")
-                                return
-                            check_rc = self.libnss.PK11_CheckUserPassword(keyslot, password)
-                            if check_rc != 0:
-                                # Something went wrong with given password
-                                self.log("ERROR","Password decoding failed! Check master password")
-                                return;
+                            self.log("ERROR", "Master password detected!")
+                            return
 
                         _extraction_dict["0-Web"] = self.decode_reg(row[0])
                         _extraction_dict["1-Username"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
-
-                        if self.libnss and self.libnss.PK11SDR_Decrypt(byref(self.passwd),byref(self.dectext),byref(self.pwdata))==-1:
-                           self.log("ERROR","Master password decryption failed!")
-                           return
-
                         _extraction_dict["2-Password"] = self.decode_reg(string_at(self.dectext.data,self.dectext.len))
 
                         _extraction_list.append(_extraction_dict)
@@ -1587,7 +1557,7 @@ class Dumpzilla():
     ### OFFLINE CACHE                                                                                             #
     ###############################################################################################################
 
-    def show_cache(self, dir, source):
+    def show_cache(self, dir, source = False ):
       # TODO: firefox-cache2-index-parser.py??
       offlinecache_extraction_dict = {}
       cache_found = False
@@ -1644,9 +1614,9 @@ class Dumpzilla():
       # Saving extraction to main extraction list
       self.total_extraction["offlinecache"] = offlinecache_extraction_dict
       if cache_found == False and source is None:
-        self.log("WARNING","Offline Cache database not found! You can specify one with '-source' param")
+        self.log("WARNING","OfflineCache database not found! You can specify one using '-source' param")
       else:
-        self.log("WARNING","Offline Cache database not found! Check the source specified looking for index.sqlite")
+        self.log("WARNING","OfflineCache database not found! Check the source specified looking for index.sqlite")
 
     ###############################################################################################################
     ### OFFLINE CACHE                                                                                             #
