@@ -1580,6 +1580,10 @@ class Dumpzilla():
           cache_abs_sources.append(self.get_path_by_os(dir.replace(".mozilla", ".cache/mozilla"),"index.sqlite","OfflineCache")) # Firefox
           cache_abs_sources.append(self.get_path_by_os(dir.replace(".mozilla", ".cache/mozilla"),"index.sqlite","Cache")) # Seamonkey
 
+        # For MacOS profile
+        if dir.find("Library/") > -1:
+          cache_abs_sources.append(self.get_path_by_os(dir.replace("Application Support", "Caches"),"index.sqlite","OfflineCache")) # Firefox
+
       for d in cache_abs_sources:
         # Checking source file
         if path.isfile(d) == True:
@@ -1615,8 +1619,8 @@ class Dumpzilla():
       self.total_extraction["offlinecache"] = offlinecache_extraction_dict
       if cache_found == False and source is None:
         self.log("WARNING","OfflineCache database not found! You can specify one using '-source' param")
-      else:
-        self.log("WARNING","OfflineCache database not found! Check the source specified looking for index.sqlite")
+      elif cache_found == False:
+        self.log("WARNING","OfflineCache database not found! Check for index.sqlite in specified source")
 
     ###############################################################################################################
     ### OFFLINE CACHE                                                                                             #
