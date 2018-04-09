@@ -2100,7 +2100,8 @@ Usage:
        return format("""python dumpzilla.py PROFILE_DIR [OPTIONS]
 
 Options:
-
+  
+ --All
  --Addons
  --Search
  --Bookmarks [-bm_create_range <start> <end>][-bm_last_range <start> <end>]
@@ -2167,6 +2168,8 @@ Profile location:
         ###############
         ### ARG PARSER
         ###############
+        parser.add_argument("--All", action="store_true", default=False,  dest='is_all_ok',
+                        help="(shows all the info)")
         parser.add_argument("--RegExp", action="store_true", default=False,  dest='is_regexp_ok',
                         help="(uses Regular Expresions for string type filters instead of Wildcards)")
         parser.add_argument("--Summary", action="store_true", default=False,  dest='is_summary_ok',
@@ -2590,7 +2593,7 @@ Profile location:
                 self.show_watch(dir,self.watch_text)
                 anyexec = True
             if not anyexec:
-                if (len(argv) == 2) or (len(argv) > 2 and (self.args.is_summary_ok or self.args.Export)):
+                if (len(argv) == 2) or (len(argv) > 2 and (self.args.is_all_ok or self.args.is_summary_ok or self.args.Export)):
                     self.All_execute(dir)
 
             ###############
