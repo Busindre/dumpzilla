@@ -2327,7 +2327,6 @@ Profile location:
                      self.is_dom_ok = True
                  if self.args.domain:
                      cookie_domain = format(self.args.domain[0])
-                     self.cookie_filters.append(["string","baseDomain",cookie_domain])
                      self.domain_filters.append(["string","scope",cookie_domain])
                  if self.args.name:
                      cookie_name = format(self.args.name[0])
