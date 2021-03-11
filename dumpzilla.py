@@ -328,8 +328,8 @@ class Dumpzilla():
           if value == header:
               return lz4.block.decompress(file.read())
           file.seek(0)
-            
-        
+
+
 
         return None
 
@@ -654,27 +654,26 @@ class Dumpzilla():
           conn.create_function("REGEXP", 2, self.regexp)
 
        cursor = conn.cursor()
-       sqlite_query = "select baseDomain, name, value, host, path, datetime(expiry, 'unixepoch', 'localtime'), datetime(lastAccessed/1000000,'unixepoch','localtime') as last ,datetime(creationTime/1000000,'unixepoch','localtime') as creat, isSecure, isHttpOnly FROM moz_cookies"
+       sqlite_query = "select name, value, host, path, datetime(expiry, 'unixepoch', 'localtime'), datetime(lastAccessed/1000000,'unixepoch','localtime') as last ,datetime(creationTime/1000000,'unixepoch','localtime') as creat, isSecure, isHttpOnly FROM moz_cookies"
        self.execute_query(cursor,sqlite_query,self.cookie_filters)
 
        _extraction_list = []
        for row in cursor:
           _extraction_dict = {}
-          _extraction_dict['0-Domain'] = self.decode_reg(row[0])
-          _extraction_dict['1-Host'] = self.decode_reg(row[3])
-          _extraction_dict['2-Name'] = self.decode_reg(row[1])
-          _extraction_dict['3-Value'] = self.decode_reg(row[2])
-          _extraction_dict['4-Path'] = self.decode_reg(row[4])
-          _extraction_dict['5-Expiry'] = self.decode_reg(row[5])
-          _extraction_dict['6-Last Access'] = self.decode_reg(row[6])
-          _extraction_dict['7-Creation Time'] = self.decode_reg(row[7])
+          _extraction_dict['1-Host'] = self.decode_reg(row[2])
+          _extraction_dict['2-Name'] = self.decode_reg(row[0])
+          _extraction_dict['3-Value'] = self.decode_reg(row[1])
+          _extraction_dict['4-Path'] = self.decode_reg(row[3])
+          _extraction_dict['5-Expiry'] = self.decode_reg(row[4])
+          _extraction_dict['6-Last Access'] = self.decode_reg(row[5])
+          _extraction_dict['7-Creation Time'] = self.decode_reg(row[6])
 
-          if self.decode_reg(row[8]) == 0:
+          if self.decode_reg(row[7]) == 0:
              _extraction_dict['8-Secure'] =  'No'
           else:
              _extraction_dict['8-Secure'] =  'Yes'
 
-          if self.decode_reg(row[9]) == 0:
+          if self.decode_reg(row[8]) == 0:
              _extraction_dict['9-HttpOnly'] =  'No'
           else:
              _extraction_dict['9-HttpOnly'] =  'Yes'
@@ -2328,7 +2327,6 @@ Profile location:
                      self.is_dom_ok = True
                  if self.args.domain:
                      cookie_domain = format(self.args.domain[0])
-                     self.cookie_filters.append(["string","baseDomain",cookie_domain])
                      self.domain_filters.append(["string","scope",cookie_domain])
                  if self.args.name:
                      cookie_name = format(self.args.name[0])
