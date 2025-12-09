@@ -1,4 +1,6 @@
-# dumpzilla (Forensic Tool)
+# dumpzilla (Forensic Tool) - :warning: Discontinued!
+
+**The project has long been discontinued due to a lack of time and volunteers.**
 
 **Dumpzilla official site**: [www.dumpzilla.org] (http://www.dumpzilla.org "Mozilla browser forensic tool")
 
